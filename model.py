@@ -5,15 +5,12 @@ import numpy as np
 import policy
 
 class Model:
-    def __init__(self, capacities, customer_rates, server_rates, abandonment_rates, customer_rewards, server_rewards, abandonment_rewards, holding_rewards):
+    def __init__(self, capacities, customer_rates, server_rates, abandonment_rates, state_rewards):
         self.capacities = capacities
         self.customer_rates = customer_rates
         self.server_rates = server_rates
         self.abandonment_rates = abandonment_rates
-        self.customer_rewards = customer_rewards
-        self.server_rewards = server_rewards
-        self.abandonment_rewards = abandonment_rewards
-        self.holding_rewards = holding_rewards
+        self.state_rewards = state_rewards
 
         self.customer_rates[-1] = [0 for x in self.customer_rates[0]]
         self.server_rates[0] = [0 for x in self.server_rates[0]]
@@ -28,7 +25,6 @@ class Model:
 
         self.transition_labels = [i for i in range(-self.n_server_types, self.n_customer_types+1)]
         self.transition_rates = [self.server_rates[state][::-1] + [self.abandonment_rates[state]] + self.customer_rates[state] for state in range(0, self.n_states)]
-        self.transition_rewards = [self.server_rewards[state][::-1] + [self.abandonment_rewards[state]] + self.customer_rewards[state] for state in range(0, self.n_states)]
 
     def get_customer_rate(self, state):
         return self.aggregate_customer_rates[state]
@@ -58,9 +54,9 @@ class Model:
         if transition_type == 0 and not accept:
             raise Exception("Invalid Agent: cannot reject an abandonment")
         if not accept:
-            return time_elapsed*self.holding_rewards[state]
+            return time_elapsed*self.state_rewards.holding_rewards[state]
         transition_index = transition_type + self.n_server_types
-        return self.transition_rewards[state][transition_index] + time_elapsed*self.holding_rewards[state]
+        return self.state_rewards.transition_rewards[state][transition_index] + time_elapsed*self.state_rewards.holding_rewards[state]
     
     def get_next_state(self, state, transition_type, accept):
         if transition_type == 0 and not accept:
@@ -86,15 +82,15 @@ class Model:
         if limiting_type == -1:
             return []
 
-        threshold = self.customer_rewards[state][limiting_type]
-        return [i for i in range(self.n_customer_types) if self.customer_rewards[state][i] >= threshold]
+        threshold = self.state_rewards.customer_rewards[state][limiting_type]
+        return [i for i in range(self.n_customer_types) if self.state_rewards.customer_rewards[state][i] >= threshold]
 
     def get_accepted_server_types(self, state, limiting_type):
         if limiting_type == -1:
             return []
 
-        threshold = self.server_rewards[state][limiting_type]
-        return [i for i in range(self.n_server_types) if self.server_rewards[state][i] >= threshold]
+        threshold = self.state_rewards.server_rewards[state][limiting_type]
+        return [i for i in range(self.n_server_types) if self.state_rewards.server_rewards[state][i] >= threshold]
 
     def get_customer_acceptance_rate(self, state, limiting_type):
         types = self.get_accepted_customer_types(state, limiting_type)
@@ -109,14 +105,14 @@ class Model:
     def get_customer_acceptance_reward(self, state, limiting_type):
         types = self.get_accepted_customer_types(state, limiting_type)
         accept_rates = [(rate if i in types else 0) for i, rate in enumerate(self.customer_rates[state])]
-        accept_reward = sum([rate*reward for rate, reward in zip(accept_rates, self.customer_rewards[state])])
+        accept_reward = sum([rate*reward for rate, reward in zip(accept_rates, self.state_rewards.customer_rewards[state])])
 
         return accept_reward
 
     def get_server_acceptance_reward(self, state, limiting_type):
         types = self.get_accepted_server_types(state, limiting_type)
         accept_rates = [(rate if i in types else 0) for i, rate in enumerate(self.server_rates[state])]
-        accept_reward = sum([rate*reward for rate, reward in zip(accept_rates, self.server_rewards[state])])
+        accept_reward = sum([rate*reward for rate, reward in zip(accept_rates, self.state_rewards.server_rewards[state])])
 
         return accept_reward
 
@@ -139,9 +135,9 @@ class Model:
     def get_mean_reward(self, state, limiting_types):
         customer_reward = self.get_customer_acceptance_reward(state, limiting_types[0])
         server_reward = self.get_server_acceptance_reward(state, limiting_types[1])
-        abandonment_reward = self.abandonment_rates[state] * self.abandonment_rewards[state]
+        abandonment_reward = self.abandonment_rates[state] * self.state_rewards.abandonment_rewards[state]
 
-        return customer_reward + server_reward + abandonment_reward + self.holding_rewards[state]
+        return customer_reward + server_reward + abandonment_reward + self.state_rewards.holding_rewards[state]
 
     def get_generator_matrix(self, policy):
         generator = np.zeros((self.n_states, self.n_states))
@@ -228,7 +224,10 @@ class Model:
                     unnorm_bias += transition_rates[1] * bias[state+1]
 
                 unnorm_bias += (reward-gain)
-                new_bias = unnorm_bias / sum(transition_rates)
+                if sum(transition_rates) == 0:
+                    new_bias = 0
+                else:
+                    new_bias = unnorm_bias / sum(transition_rates)
                 
                 if new_bias > max_bias:
                     max_limit_types = limit_types
@@ -271,6 +270,20 @@ class RewardGenerator:
         return [self.rng.uniform(-1,1) for i in range(bounds.n_states)]
         #return [0 for i in range(bounds.n_states)]
 
+class StateRewards:
+    def __init__(self, customer_rewards, server_rewards, abandonment_rewards, holding_rewards):
+        self.customer_rewards = customer_rewards
+        self.server_rewards = server_rewards
+        self.abandonment_rewards = abandonment_rewards
+        self.holding_rewards = holding_rewards
+
+        self.n_customer_types = len(self.customer_rewards[0])
+        self.n_server_types = len(self.server_rewards[0])
+
+        self.n_states = len(self.customer_rewards)
+
+        self.transition_rewards = [self.server_rewards[state][::-1] + [self.abandonment_rewards[state]] + self.customer_rewards[state] for state in range(0, self.n_states)]
+
 def generate_model(bounds: ModelBounds, reward_generator: RewardGenerator, rng: np.random._generator.Generator):
     n_states = bounds.n_states
     def generate_arrival_rates(ct, total_rate):
@@ -278,8 +291,8 @@ def generate_model(bounds: ModelBounds, reward_generator: RewardGenerator, rng: 
         rates = [total_rate * prob for prob in probs]
         return rates
 
-    total_customer_rates = sorted([rng.uniform(0,bounds.customer_ub) for i in range(n_states)], reverse=True)
-    total_server_rates = sorted([rng.uniform(0,bounds.server_ub) for i in range(n_states)])
+    total_customer_rates = sorted([rng.uniform(bounds.rate_lb,bounds.customer_ub) for i in range(n_states)], reverse=True)
+    total_server_rates = sorted([rng.uniform(bounds.rate_lb,bounds.server_ub) for i in range(n_states)])
 
     customer_rates = [generate_arrival_rates(bounds.n_classes[0], rate) for rate in total_customer_rates]
     server_rates = [generate_arrival_rates(bounds.n_classes[1], rate) for rate in total_server_rates]
@@ -294,9 +307,8 @@ def generate_model(bounds: ModelBounds, reward_generator: RewardGenerator, rng: 
     abandonment_rewards = reward_generator.generate_abandonment_rewards(bounds)
     holding_rewards = reward_generator.generate_holding_rewards(bounds)
 
-    #def __init__(self, capacities, customer_rates, server_rates, abandonment_rates, customer_rewards, server_rewards, abandonment_rewards, holding_rewards):
-    return Model(bounds.capacities, customer_rates, server_rates, abandonment_rates, customer_rewards, server_rewards, abandonment_rewards, holding_rewards)
-
+    state_rewards = StateRewards(customer_rewards, server_rewards, abandonment_rewards, holding_rewards)
+    return Model(bounds.capacities, customer_rates, server_rates, abandonment_rates, state_rewards)
 
 if __name__ == "__main__":
     rng = np.random.default_rng()

@@ -14,6 +14,7 @@ class Policy:
 
     def get_improved_policy(self):
         bias, gain = self.model.get_gain_bias(self)
+        print(f"Current gain: {gain}")
 
         new_policy = Policy(self.model)
         new_policy.limiting_types = []
@@ -31,13 +32,13 @@ class Policy:
             limiting_type = self.limiting_types[state][1]
             if limiting_type == -1:
                 return False
-            return self.model.server_rewards[state][server_type] >= self.model.server_rewards[state][limiting_type]
+            return self.model.state_rewards.server_rewards[state][server_type] >= self.model.state_rewards.server_rewards[state][limiting_type]
         if transition_type > 0:
             customer_type = transition_type-1
             limiting_type = self.limiting_types[state][0]
             if limiting_type == -1:
                 return False
-            return self.model.customer_rewards[state][customer_type] >= self.model.customer_rewards[state][limiting_type]
+            return self.model.state_rewards.customer_rewards[state][customer_type] >= self.model.state_rewards.customer_rewards[state][limiting_type]
 
     def __eq__(self, other):
         for x, y in zip(self.limiting_types, other.limiting_types):
@@ -51,8 +52,8 @@ class Policy:
 
         out_policy.limiting_types = []
         for state in range(model.n_states):
-            limiting_customer_type = utils.argmin(model.customer_rewards[state])
-            limiting_server_type = utils.argmin(model.server_rewards[state])
+            limiting_customer_type = utils.argmin(model.state_rewards.customer_rewards[state])
+            limiting_server_type = utils.argmin(model.state_rewards.server_rewards[state])
             out_policy.limiting_types.append([limiting_customer_type, limiting_server_type])
 
         return out_policy

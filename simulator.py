@@ -23,8 +23,8 @@ class Simulator:
     def step(self):
         # generate an exponential RV based on the total rate
         total_rate = self.model.get_total_rate(self.state)
-        #time_elapsed = self.rng.exponential(scale=1/total_rate)
-        time_elapsed = -math.log(random.random())/total_rate
+        time_elapsed = self.rng.exponential(scale=1/total_rate)
+        #time_elapsed = -math.log(random.random())/total_rate
         self.t += time_elapsed
 
         transition_probs = self.model.get_transition_probs(self.state)
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     observer = Observer(model)
     simulator = Simulator(model, agent, observer, rng)
 
-    for i in range(10000):
+    for i in range(100000):
         """if i != 0 and i % 100000 == 0:
             print("i: ", i)
             print("Simulated gain: ", observer.get_gain())
