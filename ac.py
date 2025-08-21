@@ -1,29 +1,278 @@
+import math
+import copy
+
 import model
 
-class ConfidenceIntervals:
+class ParameterEstimator:
     def __init__(self, model_bounds):
         self.model_bounds = model_bounds
 
-        self.sojourn_rate_intervals = []
-        self.probability_estimates = []
-        self.probability_errors = []
+        self.sojourn_times = [[] for i in range(model_bounds.n_states)]
+        self.transition_counts = [[0 for j in range(model_bounds.n_transitions)] for i in range(model_bounds.n_states)]
 
-        raise Exception("finish")
+    def observe(self, state, transition_type, time_elapsed):
+        self.transition_counts[self.model_bounds.transition_idx(transition_type)] += 1
+        self.sojourn_times[state].append(time_elapsed)
 
-    def get_abandonment_estimates(self):
-        raise Exception("finish")
+    def sojourn_time_estimate(self, state, confidence_param):
+        acc = 0
+        min_rate = self.model_bounds.get_minimum_rate()
+        for i, stime in enumerate(self.sojourn_times[state]):
+            truncation = math.sqrt(2*(i+1)/(math.pow(min_rate,2)*math.log(1/confidence_param)))
+            if stime <= truncation:
+                acc += stime
+        return acc/stime
 
-    def get_customer_arrival_rates(self):
-        raise Exception("finish")
+    def transition_rate_estimate(self, state, confidence_param):
+        st = self.sojourn_time_estimate(state, confidence_param)
 
-    def get_server_arrival_rates(self):
-        raise Exception("finish")
+        if st == 0:
+            return float("inf")
+
+        return 1/st
+        
+    def transition_rate_epsilon(self, state, confidence_param):
+        ct = len(self.sojourn_times[state])
+        inner_term = (14/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
+
+        min_rate = self.model_bounds.get_minimum_rate()
+        max_rate = self.model_bounds.get_maximum_rate()
+
+        return 4*((max_rate**2)/min_rate)*math.sqrt(inner_term)
+
+    def transition_prob_estimate(self, state, confidence_param):
+        transition_counts = copy.deepcopy(self.transition_counts[state])
+        total_n_transitions = sum(transition_counts)
+
+        return [x/total_n_transitions for x in transition_counts]
+
+    def transition_prob_epsilon(self, state, confidence_param):
+        total_n_transitions = sum(self.transition_counts[state])
+        inner_term = (14*self.model_bounds.n_transitions/max(1,total_n_transitions))*math.log(2*self.model_bounds.n_states/confidence_param)
+        return math.sqrt(inner_term)
+
+
+class MockParameterEstimator:
+    def __init__(self, rates, epsilons, transition_probs, transition_epsilons):
+        self.rates = rates
+        self.epsilons = epsilons
+        self.transition_probs = transition_probs
+        self.transition_epsilons = transition_epsilons
+
+    def sojourn_time_estimate(self, state, confidence_param):
+        return 1/self.rates[state]
+
+    def transition_rate_estimate(self, state, confidence_param):
+        return self.rates[state]
+        
+    def transition_rate_epsilon(self, state, confidence_param):
+        return self.transition_epsilons[state]
+
+    def transition_prob_estimate(self, state, confidence_param):
+        return self.transition_probs[state]
+
+    def transition_prob_epsilon(self, state, confidence_param):
+        return self.transition_epsilons[state]
 
 
 class Exploration:
-    def __init__(self, model_bounds):
+    def __init__(self, model_bounds: model.ModelBounds):
         self.model_bounds = model_bounds
-        raise Exception("finish")
+        self.state_visit_counts = [0 for i in range(self.model_bounds.n_states)]
+        self.state_visit_counts_in_episode = [0 for i in range(self.model_bounds.n_states)]
+        self.steps_before_episode = 1
 
-def generate_model(confidence_intervals, state_rewards):
-    pass
+    def observe(self, state: int) -> bool:
+        self.state_visit_counts[state] += 1
+        self.state_visit_counts_in_episode[state] += 1
+
+        return (2*self.state_visit_counts_in_episode[state]) >= self.state_visit_counts[state]
+
+    def new_episode(self):
+        self.state_visit_counts_in_episode = [0 for i in range(self.model_bounds.n_states)]
+
+        self.steps_before_episode = sum(self.state_visit_counts)
+
+def generate_extended_model(model_bounds, parameter_estimator, state_rewards, confidence_param):
+    transition_rates = [parameter_estimator.transition_rate_estimate(state, confidence_param) for state in range(model_bounds.n_states)]
+    transition_rate_epsilon = [parameter_estimator.transition_rate_epsilon(state, confidence_param) for state in range(model_bounds.n_states)]
+    transition_probs = [parameter_estimator.transition_prob_estimate(state, confidence_param) for state in range(model_bounds.n_states)]
+    transition_prob_epsilon = [parameter_estimator.transition_prob_epsilon(state, confidence_param) for state in range(model_bounds.n_states)]
+
+    abandonments = [0 for state in range(model_bounds.n_states)]
+    total_customer_arrivals = [0 for state in range(model_bounds.n_states)]
+    total_server_arrivals = [0 for state in range(model_bounds.n_states)]
+    customer_rates = [[] for state in range(model_bounds.n_states)]
+    server_rates = [[] for state in range(model_bounds.n_states)]
+
+    ext_model_bounds = model_bounds.get_extended_bounds()
+    ext_state_rewards = state_rewards.get_extended_rewards()
+
+    # generate eta
+    max_eta = 0
+    for state in range(model_bounds.capacities[1]+1, model_bounds.n_states):
+        transition_idx = model_bounds.get_transition_idx(0)
+        naive_eta = max(transition_probs[state][transition_idx]-(0.5*transition_prob_epsilon[state]),0) * (transition_rates[state] - transition_rate_epsilon[state])
+        print(f"naive_eta[state]: {naive_eta}")
+        eta = max(naive_eta, max_eta, model_bounds.rate_lb)
+        abandonments[state] = eta
+        max_eta = eta
+
+    # generate gamma
+    max_gamma = 0
+    for state in range(model_bounds.capacities[1]-1,-1,-1):
+        transition_idx = model_bounds.get_transition_idx(0)
+        naive_gamma = max(transition_probs[state][transition_idx]-(0.5*transition_prob_epsilon[state]),0) * (transition_rates[state] - transition_rate_epsilon[state])
+        gamma = max(naive_gamma, max_gamma, model_bounds.rate_lb)
+        abandonments[state] = gamma
+        max_gamma = gamma
+
+    # DRY
+    get_state_iterator = lambda side: range(0, model_bounds.n_states) if side == "customer" else range(model_bounds.n_states-1,-1,-1)
+    consider_abandonments = lambda state, side: (state < model_bounds.capacities[1] and side == "customer") or (state > model_bounds.capacities[1] and side == "server")
+    get_start_transition_customer = lambda state: model_bounds.get_transition_idx(0) if consider_abandonments(state, "customer") else model_bounds.get_transition_idx(1)
+    get_end_transition_customer = lambda state: model_bounds.get_transition_idx(model_bounds.n_classes[0])
+    get_start_transition_server = lambda state: 0
+    get_end_transition_server = lambda state: model_bounds.get_transition_idx(0) if consider_abandonments(state, "server") else model_bounds.n_classes[1]-1
+    get_start_transition  = lambda state, side: get_start_transition_customer(state) if side == "customer" else get_start_transition_server(state)
+    get_end_transition  = lambda state, side: get_end_transition_customer(state) if side == "customer" else get_end_transition_server(state)
+
+    order_transitions = lambda x, side: x if side == "customer" else x[::-1]
+
+    min_total_increase_rate = float("inf")
+    for state in get_state_iterator("customer"):
+        start_transition = get_start_transition(state, "customer")
+        end_transition = get_end_transition(state, "customer")
+
+        cum_prob = sum(transition_probs[state][start_transition:end_transition+1])
+
+        ci_ub = min(cum_prob+(0.5*transition_prob_epsilon[state]),1)*(transition_rates[state]+transition_rate_epsilon[state])
+        rate_ub = model_bounds.customer_ub+model_bounds.abandonment_ub
+
+        total_increase_rate = min(ci_ub, rate_ub, min_total_increase_rate)
+        min_total_increase_rate = total_increase_rate
+
+        total_customer_arrivals[state] = total_increase_rate
+        if consider_abandonments(state, "customer"):
+            total_customer_arrivals[state] -= abandonments[state]
+
+    min_total_decrease_rate = float("inf")
+    for state in get_state_iterator("server"):
+        start_transition = get_start_transition(state, "server")
+        end_transition = get_end_transition(state, "server")
+
+        cum_prob = sum(transition_probs[state][start_transition:end_transition+1])
+
+        ci_ub = min(cum_prob+(0.5*transition_prob_epsilon[state]),1)*(transition_rates[state]+transition_rate_epsilon[state])
+        rate_ub = model_bounds.server_ub+model_bounds.abandonment_ub
+
+        total_decrease_rate = min(ci_ub, rate_ub, min_total_decrease_rate)
+        min_total_decrease_rate = total_decrease_rate
+
+        total_server_arrivals[state] = total_decrease_rate
+        if consider_abandonments(state, "server"):
+            total_server_arrivals[state] -= abandonments[state]
+    
+    for state in get_state_iterator("customer"):
+        max_q = model_bounds.customer_ub+model_bounds.server_ub+model_bounds.abandonment_ub
+        min_q = model_bounds.rate_lb
+        inflation_factor = 2*(max_q/min_q)
+        # customers
+        arrival_excess = (0.5*inflation_factor)*transition_rate_epsilon[state]
+
+        ordered_customers = ext_state_rewards.customer_order[state]
+
+        start_transition = get_start_transition(state, "customer")
+        end_transition = get_end_transition(state, "customer")
+
+        cum_prob = sum(transition_probs[state][start_transition:end_transition+1])
+        conditional_probs = order_transitions([x / cum_prob for x in transition_probs[state][start_transition:end_transition+1]], "customer")
+
+        if consider_abandonments(state, "customer"):
+            # reorder everything to be at the end.
+            conditional_probs = conditional_probs[1:] + [conditional_probs[0]]
+        else:
+            conditional_probs.append(0)
+
+        ext_cond_probs = copy.copy(conditional_probs)
+        maximal_class = ext_state_rewards.customer_order[state][-1]
+        if (not consider_abandonments(state, "customer")) and maximal_class == len(conditional_probs)-1:
+            maximal_class = ext_state_rewards.customer_order[state][-2]
+        ext_cond_probs[maximal_class] += arrival_excess
+        burned_prob = 0
+        for customer_type in ext_state_rewards.customer_order[state]:
+            min_prob = 0
+
+            if customer_type == len(conditional_probs)-1:
+                if consider_abandonments(state, "customer"):
+                    min_prob = (abandonments[state]/(total_customer_arrivals[state]+abandonments[state]))
+                else:
+                    continue
+            prob_burn = min(arrival_excess - burned_prob, ext_cond_probs[customer_type] - min_prob)
+            ext_cond_probs[customer_type] -= prob_burn
+            burned_prob += prob_burn
+
+            if customer_type == len(conditional_probs)-1:
+                ext_cond_probs[customer_type] -= (abandonments[state]/(total_customer_arrivals[state]+abandonments[state]))
+        total_rate = total_customer_arrivals[state] + (abandonments[state] if consider_abandonments(state, "customer") else 0)
+        customer_rates[state] = [total_rate * p for p in ext_cond_probs]
+
+    
+    for state in get_state_iterator("server"):
+        print("-"*50)
+        print(f"considering state {state}")
+        max_q = model_bounds.server_ub+model_bounds.server_ub+model_bounds.abandonment_ub
+        min_q = model_bounds.rate_lb
+        inflation_factor = 2*(max_q/min_q)
+        # servers
+        arrival_excess = (0.5*inflation_factor)*transition_rate_epsilon[state]
+
+        ordered_servers = ext_state_rewards.server_order[state]
+
+        start_transition = get_start_transition(state, "server")
+        end_transition = get_end_transition(state, "server")
+
+        cum_prob = sum(transition_probs[state][start_transition:end_transition+1])
+        conditional_probs = order_transitions([x / cum_prob for x in transition_probs[state][start_transition:end_transition+1]], "server")
+
+        if consider_abandonments(state, "server"):
+            # reorder everything to be at the end.
+            conditional_probs = conditional_probs[:-1] + [conditional_probs[-1]]
+        else:
+            conditional_probs.append(0)
+
+        ext_cond_probs = copy.copy(conditional_probs)
+        maximal_class = ext_state_rewards.server_order[state][-1]
+        if (not consider_abandonments(state, "server")) and maximal_class == len(conditional_probs)-1:
+            print("trimming maximal class")
+            maximal_class = ext_state_rewards.server_order[state][-2]
+        ext_cond_probs[maximal_class] += arrival_excess
+        burned_prob = 0
+        for server_type in ext_state_rewards.server_order[state]:
+            print("-"*20)
+            print(f"considering type {server_type}")
+            min_prob = 0
+
+            if server_type == len(conditional_probs)-1:
+                if consider_abandonments(state, "server"):
+                    min_prob = (abandonments[state]/(total_server_arrivals[state]+abandonments[state]))
+                else:
+                    continue
+            prob_burn = min(arrival_excess - burned_prob, ext_cond_probs[server_type] - min_prob)
+            ext_cond_probs[server_type] -= prob_burn
+            burned_prob += prob_burn
+
+            if server_type == len(conditional_probs)-1:
+                ext_cond_probs[server_type] -= (abandonments[state]/(total_server_arrivals[state]+abandonments[state]))
+        total_rate = total_server_arrivals[state] + (abandonments[state] if consider_abandonments(state, "server") else 0)
+        server_rates[state] = [total_rate * p for p in ext_cond_probs]
+        print(f"conditional_probs: {conditional_probs}")
+        print(f"ext_cond_probs: {ext_cond_probs}")
+
+    print(total_customer_arrivals)
+    print(customer_rates)
+    print(total_server_arrivals)
+    print(server_rates)
+    print(abandonments)
+
+    return model.Model(ext_model_bounds.capacities, customer_rates, server_rates, abandonments, ext_state_rewards)

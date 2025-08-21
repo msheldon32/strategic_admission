@@ -1,5 +1,7 @@
 import utils
 
+import copy
+
 class Policy:
     def __init__(self, model):
         self.model = model
@@ -15,12 +17,17 @@ class Policy:
     def get_improved_policy(self):
         bias, gain = self.model.get_gain_bias(self)
         print(f"Current gain: {gain}")
+        #print(f"Bias: {bias}")
+        #print(f"Generator: {self.model.get_generator_matrix(self)}")
+        #print(f"Reward: {self.model.get_reward_vector(self)}")
+        #print(f"Probs: {self.model.get_steady_state_probs(self)}")
 
         new_policy = Policy(self.model)
-        new_policy.limiting_types = []
+        new_policy.limiting_types = copy.deepcopy(self.limiting_types)
 
         for state in range(self.n_states):
-            new_policy.limiting_types.append(self.model.get_maximal_action(state, bias,gain))
+            new_limiting_types = self.model.get_maximal_action(state, bias,gain)
+            new_policy.limiting_types[state] = new_limiting_types
 
         return new_policy
 

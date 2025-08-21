@@ -3,7 +3,7 @@ import math
 
 import numpy as np
 
-from agent import KnownPOAgent, DeterministicAgent
+from agent import KnownPOAgent, DeterministicAgent, ACRLAgent
 from model import generate_model, ModelBounds, RewardGenerator
 from observer import Observer
 from policy import Policy
@@ -53,9 +53,11 @@ class Simulator:
 
 if __name__ == "__main__":
     rng = np.random.default_rng()
-    model = generate_model(ModelBounds(), RewardGenerator(rng), rng)
+    model_bounds = ModelBounds([5,5],[-10,10])
+    model = generate_model(model_bounds, RewardGenerator(rng), rng)
 
-    agent = KnownPOAgent(model)
+    #agent = KnownPOAgent(model)
+    agent = ACRLAgent(model_bounds, model.state_rewards)
     #agent = DeterministicAgent(model, Policy.full_rejection_policy(model))
     #agent = DeterministicAgent(model, Policy.full_acceptance_policy(model))
     observer = Observer(model)

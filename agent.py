@@ -55,13 +55,15 @@ class ACRLAgent(Agent):
     def __init__(self, model_bounds, state_rewards):
         # make sure there's +1 classes for handling abandonments
         super().__init__()
-        self.confidence_intervals = ac.ConfidenceIntervals(model_bounds)
+        self.parameter_estimator = ac.ParameterEstimator(model_bounds)
         self.state_rewards = state_rewards
-        self.model = ac.generate_model(self.confidence_intervals, self.state_rewards)
+        self.model = ac.generate_extended_model(self.parameter_estimator, self.state_rewards)
         self.exploration = ac.Exploration(model_bounds)
 
         self.policy = policy.Policy.full_acceptance_policy(self.model)
         self.update_policy()
+
+        self.initial_confidence_param = 0.25
 
     def update_policy(self):
         while True:
@@ -76,7 +78,8 @@ class ACRLAgent(Agent):
         return random.choice([True, False])
 
     def observe(self,state, next_state, transition_type, reward, time_elapsed):
-        self.confidence_intervals.report(state, transition_type, time_elapsed)
+        self.parameter_estimator.observe(state, transition_type, time_elapsed)
         if self.exploration.observe(state):
-            self.model = ac.generate_model(self.confidence_intervals, self.state_rewards)
+            self.exploration.new_episode()
+            self.model = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/self.exploration.steps_before_episode)
             self.update_policy()

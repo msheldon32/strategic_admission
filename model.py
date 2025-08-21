@@ -1,4 +1,5 @@
 import random
+import copy
 
 import numpy as np
 
@@ -222,33 +223,61 @@ class Model:
                     unnorm_bias += transition_rates[0] * bias[state-1]
                 if state < self.n_states-1:
                     unnorm_bias += transition_rates[1] * bias[state+1]
-
+                
+                # the problem is below. Basically we will 0 out the bias.
                 unnorm_bias += (reward-gain)
                 if sum(transition_rates) == 0:
-                    new_bias = 0
+                    if reward > gain:
+                        new_bias = float("inf")
+                    else:
+                        new_bias = float("-inf")
                 else:
                     new_bias = unnorm_bias / sum(transition_rates)
                 
                 if new_bias > max_bias:
                     max_limit_types = limit_types
                     max_bias = new_bias
-
+        #print(f"max_bias: {max_bias} at {state}")
+        #print(f"holding rewards: {self.state_rewards.holding_rewards}")
         return max_limit_types
 
 
 class ModelBounds:
-    def __init__(self):
+    def __init__(self, n_classes, capacities):
         self.rate_lb = 1
         self.customer_ub = 2
         self.server_ub = 2
         self.abandonment_ub = 2
 
-        self.n_classes = [5,5]
-        self.capacities = [2,2]
+        self.n_classes = n_classes
+        self.capacities = capacities
+        self.transition_labels = [i for i in range(-self.n_classes[1], self.n_classes[0]+1)]
+
+    def get_extended_bounds(self):
+        new_bounds = ModelBounds([x+1 for x in self.n_classes], self.capacities)
+        new_bounds.rate_lb = self.rate_lb
+        new_bounds.customer_ub = self.customer_ub
+        new_bounds.server_ub = self.server_ub
+        new_bounds.abandonment_ub = self.abandonment_ub
+
+        return new_bounds
 
     @property
     def n_states(self):
         return sum(self.capacities)+1
+
+    @property
+    def n_transitions(self):
+        return sum(self.n_classes)+1
+
+    def get_transition_idx(self, transition_type):
+        return self.transition_labels.index(transition_type)
+
+    def get_maximum_rate(self):
+        return self.customer_ub+self.server_ub+self.abandonment_ub
+
+    def get_minimum_rate(self):
+        return self.rate_lb
 
 class RewardGenerator:
     def __init__(self, rng):
@@ -284,6 +313,19 @@ class StateRewards:
 
         self.transition_rewards = [self.server_rewards[state][::-1] + [self.abandonment_rewards[state]] + self.customer_rewards[state] for state in range(0, self.n_states)]
 
+        # customer/server orderings
+        self.customer_order = [sorted([(x,i) for i,x in enumerate(y)]) for y in self.customer_rewards]
+        self.customer_order = [[x[1] for x in y] for y in self.customer_order]
+        self.server_order = [sorted([(x,i) for i,x in enumerate(y)]) for y in self.server_rewards]
+        self.server_order = [[x[1] for x in y] for y in self.server_order]
+
+    def get_extended_rewards(self):
+        new_customer_rewards = [a + [b] for a,b in zip(self.customer_rewards, self.abandonment_rewards)]
+        new_server_rewards = [a + [b] for a,b in zip(self.server_rewards, self.abandonment_rewards)]
+        extended_rewards = StateRewards(new_customer_rewards, new_server_rewards, copy.deepcopy(self.abandonment_rewards), copy.deepcopy(self.holding_rewards))
+        return extended_rewards
+
+
 def generate_model(bounds: ModelBounds, reward_generator: RewardGenerator, rng: np.random._generator.Generator):
     n_states = bounds.n_states
     def generate_arrival_rates(ct, total_rate):
@@ -311,7 +353,7 @@ def generate_model(bounds: ModelBounds, reward_generator: RewardGenerator, rng: 
     return Model(bounds.capacities, customer_rates, server_rates, abandonment_rates, state_rewards)
 
 if __name__ == "__main__":
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed=2)
     model = generate_model(ModelBounds(), RewardGenerator(rng), rng)
     
     policy = policy.Policy.full_acceptance_policy(model)
