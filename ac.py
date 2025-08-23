@@ -3,6 +3,8 @@ import copy
 
 import model
 
+import numpy as np
+
 class ParameterEstimator:
     def __init__(self, model_bounds):
         self.model_bounds = model_bounds
@@ -29,7 +31,7 @@ class ParameterEstimator:
         st = self.sojourn_time_estimate(state, confidence_param)
 
         if st == 0:
-            return float("inf")
+            return (self.model_bounds.total_rate_lb(state)+self.model_bounds.total_rate_ub(state))/2
 
         return 1/st
         
@@ -143,6 +145,16 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         abandonments[state] = eta
         max_eta = eta
 
+        if np.isnan(eta):
+            print("Found Nan!")
+            print(f"naive_eta: {naive_eta}")
+            print(f"transition_prob_epsilon: {transition_prob_epsilon[state]}")
+            print(f"transition_rate_epsilon: {transition_rate_epsilon[state]}")
+            print(f"transition_probs: {transition_probs[state][transition_idx]}")
+            print(f"transition_rates: {transition_rates[state]}")
+
+            raise Exception("stop")
+
     # generate gamma
     max_gamma = 0
     for state in range(model_bounds.capacities[1]-1,-1,-1):
@@ -151,6 +163,16 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         gamma = max(naive_gamma, max_gamma, model_bounds.rate_lb)
         abandonments[state] = gamma
         max_gamma = gamma
+
+        if np.isnan(gamma):
+            print("Found Nan!")
+            print(f"naive_gamma: {naive_gamma}")
+            print(f"transition_prob_epsilon: {transition_prob_epsilon[state]}")
+            print(f"transition_rate_epsilon: {transition_rate_epsilon[state]}")
+            print(f"transition_probs: {transition_probs[state][transition_idx]}")
+            print(f"transition_rates: {transition_rates[state]}")
+
+            raise Exception("stop")
 
     # DRY
     get_state_iterator = lambda side: range(0, model_bounds.n_states-1) if side == "customer" else range(model_bounds.n_states-1,0,-1)
@@ -177,6 +199,16 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         total_increase_rate = min(ci_ub, total_rate_ub, min_total_increase_rate)
         min_total_increase_rate = total_increase_rate
 
+
+        if np.isnan(total_increase_rate):
+            print(f"Found NAN!")
+            print(f"cum_prob: {cum_prob}")
+            print(f"ci_ub: {ci_ub}")
+            print(f"total_rate_ub: {total_rate_ub}")
+            print(f"transition_prob_epsilon: {transition_prob_epsilon[state]}")
+            print(f"transition_rate_epsilon: {transition_rate_epsilon[state]}")
+            raise Exception("stop")
+
         total_customer_arrivals[state] = total_increase_rate
         if consider_abandonments(state, "customer"):
             total_customer_arrivals[state] -= abandonments[state]
@@ -192,6 +224,15 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
 
         total_decrease_rate = min(ci_ub, total_rate_ub, min_total_decrease_rate)
         min_total_decrease_rate = total_decrease_rate
+
+        if np.isnan(total_decrease_rate):
+            print(f"Found NAN!")
+            print(f"cum_prob: {cum_prob}")
+            print(f"ci_ub: {ci_ub}")
+            print(f"total_rate_ub: {total_rate_ub}")
+            print(f"transition_prob_epsilon: {transition_prob_epsilon[state]}")
+            print(f"transition_rate_epsilon: {transition_rate_epsilon[state]}")
+            raise Exception("stop")
 
         total_server_arrivals[state] = total_decrease_rate
         if consider_abandonments(state, "server"):
