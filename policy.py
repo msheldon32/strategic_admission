@@ -16,7 +16,7 @@ class Policy:
 
     def get_improved_policy(self):
         bias, gain = self.model.get_gain_bias(self)
-        print(f"Current gain: {gain}")
+        #print(f"Current gain: {gain}")
         #print(f"Bias: {bias}")
         #print(f"Generator: {self.model.get_generator_matrix(self)}")
         #print(f"Reward: {self.model.get_reward_vector(self)}")
@@ -27,9 +27,10 @@ class Policy:
 
         for state in range(self.n_states):
             new_limiting_types = self.model.get_maximal_action(state, bias,gain)
-            if not all([x == y for x,y in zip(new_limiting_types, self.limiting_types[state])]):
-                new_policy.limiting_types[state] = new_limiting_types
-                break
+            new_policy.limiting_types[state] = new_limiting_types
+            #if not all([x == y for x,y in zip(new_limiting_types, self.limiting_types[state])]):
+            #    new_policy.limiting_types[state] = new_limiting_types
+            #    break
 
         return new_policy
 

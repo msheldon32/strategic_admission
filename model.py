@@ -133,6 +133,14 @@ class Model:
             rate_up += self.abandonment_rates[state]
         if state > self.capacities[1]:
             rate_down += self.abandonment_rates[state]
+        if rate_up < 0:
+            print(f"invalid rate_up at {state}")
+            print(self.customer_rates[state])
+            print(f"abandonments: {self.abandonment_rates[state]}")
+        if rate_down < 0:
+            print(f"invalid rate_down at {state}")
+            print(self.server_rates[state])
+            print(f"abandonments: {self.abandonment_rates[state]}")
         return [rate_down, rate_up]
 
     def get_mean_reward(self, state, limiting_types):
@@ -147,6 +155,8 @@ class Model:
 
         for state in range(self.n_states):
             transitions = self.get_transition_rates(state, policy.get_limiting_types(state))
+            if transitions[0] < 0:
+                raise Exception(f"invalid generator: {transitions[0]}")
             total_rate = 0
             if state > 0:
                 generator[state, state-1] = transitions[0]

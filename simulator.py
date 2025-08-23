@@ -3,7 +3,7 @@ import math
 
 import numpy as np
 
-from agent import KnownPOAgent, DeterministicAgent, ACRLAgent
+from agent import KnownPOAgent, DeterministicAgent, ACRLAgent, ClassicalACRLAgent
 from model import generate_model, ModelBounds, RewardGenerator
 from observer import Observer
 from policy import Policy
@@ -34,11 +34,11 @@ class Simulator:
 
         reward = self.model.get_reward(self.state, transition_type, accept, time_elapsed)
         #reward = self.model.get_mean_reward(self.state, self.agent.policy.limiting_types[self.state])*time_elapsed
-        mean_reward = self.model.get_mean_reward(self.state, self.agent.policy.limiting_types[self.state])
+        #mean_reward = self.model.get_mean_reward(self.state, self.agent.policy.limiting_types[self.state])
         #print(f"mean reward: {mean_reward}")
         #print(f"state: {self.state}")
         #print(f"state vector: {self.model.get_reward_vector(self.agent.policy)}")
-        self.observer.step_mean_rewards.append(mean_reward)
+        #self.observer.step_mean_rewards.append(mean_reward)
 
         next_state = self.model.get_next_state(self.state, transition_type, accept)
 
@@ -53,7 +53,10 @@ class Simulator:
 
 if __name__ == "__main__":
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([10,10],[20,20])
+    model_bounds = ModelBounds([2,2],[5,5])
+    #model_bounds.customer_ub = 4
+    #model_bounds.server_ub = 4
+    #model_bounds.abandonment_ub = 4
     model = generate_model(model_bounds, RewardGenerator(rng), rng)
 
     ideal_agent = KnownPOAgent(model)
@@ -65,10 +68,10 @@ if __name__ == "__main__":
     simulator = Simulator(model, agent, observer, rng)
     simulator2 = Simulator(model, ideal_agent, ideal_observer, rng)
 
-    for i in range(10000000):
+    for i in range(1000000000):
         if i == 1000:
             initial_value = observer.get_past_n_gain(1000)
-        if i != 0 and i % 100 == 0 and i > 10000:
+        if i != 0 and i % 10000 == 0 and i > 10000:
             print(f"steps before episode: {agent.exploration.steps_before_episode}")
             #agent.parameter_estimator.print_with_confidence(agent.initial_confidence_param/agent.exploration.steps_before_episode)
             print("Trailing gain (learning): ", observer.get_past_n_gain(10000))
