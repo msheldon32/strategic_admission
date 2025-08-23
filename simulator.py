@@ -53,30 +53,36 @@ class Simulator:
 
 if __name__ == "__main__":
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([5,5],[-10,10])
+    model_bounds = ModelBounds([2,2],[2,2])
     model = generate_model(model_bounds, RewardGenerator(rng), rng)
 
-    #agent = KnownPOAgent(model)
+    ideal_agent = KnownPOAgent(model)
     agent = ACRLAgent(model_bounds, model.state_rewards)
     #agent = DeterministicAgent(model, Policy.full_rejection_policy(model))
     #agent = DeterministicAgent(model, Policy.full_acceptance_policy(model))
     observer = Observer(model)
+    ideal_observer = Observer(model)
     simulator = Simulator(model, agent, observer, rng)
+    simulator2 = Simulator(model, ideal_agent, ideal_observer, rng)
 
-    for i in range(100000):
-        """if i != 0 and i % 100000 == 0:
-            print("i: ", i)
-            print("Simulated gain: ", observer.get_gain())
-            print("Estimated gain: ", agent.get_estimated_gain())
-            print("Avg state rewards: ", observer.get_avg_reward_state())
-            print("Mean state rewards: ", model.get_reward_vector(agent.policy))
-            print("state: ", simulator.state)
-            print("Empirical rates: ", observer.get_empirical_rates())
-            print("Actual rates: ", [model.get_transition_rates(s, agent.policy.get_limiting_types(s)) for s in range(model.n_states)])
-            print("Actual probabilities: ", model.get_steady_state_probs(agent.policy))
-            print("Empirical probabilities: ", observer.get_empirical_probs())
-            observer.reset()"""
+    for i in range(10000000):
+        if i == 10000:
+            initial_value = observer.get_past_n_gain(10000)
+        if i != 0 and i % 100 == 0 and i > 10000:
+            print(f"steps before episode: {agent.exploration.steps_before_episode}")
+            #agent.parameter_estimator.print_with_confidence(agent.initial_confidence_param/agent.exploration.steps_before_episode)
+            print("Trailing gain (learning): ", observer.get_past_n_gain(10000))
+            print("Initial gain (learning): ", initial_value)
+            print("Optimistic gain (learning): ", agent.get_estimated_gain())
+            print("Trailing gain (ideal): ", ideal_observer.get_past_n_gain(10000))
+            print(f"True model:")
+            print(model)
+            print(f"Optimistic model:")
+            print(agent.model)
+            #raise Exception("stop")
+            #print(agent.parameter_estimator.transition_counts)
         simulator.step()
+        simulator2.step()
 
     print("Simulated gain: ", observer.get_gain())
     print("Estimated gain: ", agent.get_estimated_gain())

@@ -11,7 +11,7 @@ class ParameterEstimator:
         self.transition_counts = [[0 for j in range(model_bounds.n_transitions)] for i in range(model_bounds.n_states)]
 
     def observe(self, state, transition_type, time_elapsed):
-        self.transition_counts[self.model_bounds.transition_idx(transition_type)] += 1
+        self.transition_counts[state][self.model_bounds.get_transition_idx(transition_type)] += 1
         self.sojourn_times[state].append(time_elapsed)
 
     def sojourn_time_estimate(self, state, confidence_param):
@@ -21,9 +21,11 @@ class ParameterEstimator:
             truncation = math.sqrt(2*(i+1)/(math.pow(min_rate,2)*math.log(1/confidence_param)))
             if stime <= truncation:
                 acc += stime
-        return acc/stime
+        return acc/len(self.sojourn_times[state])
 
     def transition_rate_estimate(self, state, confidence_param):
+        if len(self.sojourn_times[state]) == 0:
+            return (self.model_bounds.total_rate_lb(state)+self.model_bounds.total_rate_ub(state))/2
         st = self.sojourn_time_estimate(state, confidence_param)
 
         if st == 0:
@@ -33,23 +35,45 @@ class ParameterEstimator:
         
     def transition_rate_epsilon(self, state, confidence_param):
         ct = len(self.sojourn_times[state])
+
+        if ct == 0:
+            return (self.model_bounds.total_rate_ub(state)-self.model_bounds.total_rate_lb(state))/2
+
         inner_term = (14/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
 
         min_rate = self.model_bounds.get_minimum_rate()
         max_rate = self.model_bounds.get_maximum_rate()
 
+        #raise Exception(f"Min_rate: {min_rate}, max_rate: {max_rate}")
+        #if confidence_param < 0.01:
+        #    raise Exception(f"Inner term: {math.sqrt(inner_term)}, coef: {4*((max_rate**2)/min_rate)}, max_rate: {max_rate}, min_rate: {min_rate}")
+
         return 4*((max_rate**2)/min_rate)*math.sqrt(inner_term)
+        #return 4*(max_rate)*math.sqrt(inner_term)
+        #return math.sqrt(inner_term)
 
     def transition_prob_estimate(self, state, confidence_param):
         transition_counts = copy.deepcopy(self.transition_counts[state])
         total_n_transitions = sum(transition_counts)
 
+        if total_n_transitions == 0:
+            return [(1/len(transition_counts)) for x in transition_counts]
+
         return [x/total_n_transitions for x in transition_counts]
 
     def transition_prob_epsilon(self, state, confidence_param):
         total_n_transitions = sum(self.transition_counts[state])
+        if total_n_transitions == 0:
+            return 1
         inner_term = (14*self.model_bounds.n_transitions/max(1,total_n_transitions))*math.log(2*self.model_bounds.n_states/confidence_param)
+        print(f"state: {state}, prob half length: {math.sqrt(inner_term)}")
         return math.sqrt(inner_term)
+
+    def print_with_confidence(self, confidence_param):
+        transition_rates = [self.transition_rate_estimate(state, confidence_param) for state in range(self.model_bounds.n_states)]
+        transition_epsilon = [self.transition_rate_epsilon(state, confidence_param) for state in range(self.model_bounds.n_states)]
+
+        print([f"{x} +- {e}" for x,e in zip(transition_rates, transition_epsilon)])
 
 
 class MockParameterEstimator:
@@ -81,6 +105,7 @@ class Exploration:
         self.state_visit_counts = [0 for i in range(self.model_bounds.n_states)]
         self.state_visit_counts_in_episode = [0 for i in range(self.model_bounds.n_states)]
         self.steps_before_episode = 1
+        self.n_episodes = 0
 
     def observe(self, state: int) -> bool:
         self.state_visit_counts[state] += 1
@@ -92,6 +117,7 @@ class Exploration:
         self.state_visit_counts_in_episode = [0 for i in range(self.model_bounds.n_states)]
 
         self.steps_before_episode = sum(self.state_visit_counts)
+        self.n_episodes += 1
 
 def generate_extended_model(model_bounds, parameter_estimator, state_rewards, confidence_param):
     transition_rates = [parameter_estimator.transition_rate_estimate(state, confidence_param) for state in range(model_bounds.n_states)]
@@ -102,8 +128,8 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
     abandonments = [0 for state in range(model_bounds.n_states)]
     total_customer_arrivals = [0 for state in range(model_bounds.n_states)]
     total_server_arrivals = [0 for state in range(model_bounds.n_states)]
-    customer_rates = [[] for state in range(model_bounds.n_states)]
-    server_rates = [[] for state in range(model_bounds.n_states)]
+    customer_rates = [[0]*(model_bounds.n_classes[0]+1) for state in range(model_bounds.n_states)]
+    server_rates = [[0]*(model_bounds.n_classes[1]+1) for state in range(model_bounds.n_states)]
 
     ext_model_bounds = model_bounds.get_extended_bounds()
     ext_state_rewards = state_rewards.get_extended_rewards()
@@ -113,7 +139,6 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
     for state in range(model_bounds.capacities[1]+1, model_bounds.n_states):
         transition_idx = model_bounds.get_transition_idx(0)
         naive_eta = max(transition_probs[state][transition_idx]-(0.5*transition_prob_epsilon[state]),0) * (transition_rates[state] - transition_rate_epsilon[state])
-        print(f"naive_eta[state]: {naive_eta}")
         eta = max(naive_eta, max_eta, model_bounds.rate_lb)
         abandonments[state] = eta
         max_eta = eta
@@ -128,7 +153,7 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         max_gamma = gamma
 
     # DRY
-    get_state_iterator = lambda side: range(0, model_bounds.n_states) if side == "customer" else range(model_bounds.n_states-1,-1,-1)
+    get_state_iterator = lambda side: range(0, model_bounds.n_states-1) if side == "customer" else range(model_bounds.n_states-1,0,-1)
     consider_abandonments = lambda state, side: (state < model_bounds.capacities[1] and side == "customer") or (state > model_bounds.capacities[1] and side == "server")
     get_start_transition_customer = lambda state: model_bounds.get_transition_idx(0) if consider_abandonments(state, "customer") else model_bounds.get_transition_idx(1)
     get_end_transition_customer = lambda state: model_bounds.get_transition_idx(model_bounds.n_classes[0])
@@ -147,15 +172,14 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         cum_prob = sum(transition_probs[state][start_transition:end_transition+1])
 
         ci_ub = min(cum_prob+(0.5*transition_prob_epsilon[state]),1)*(transition_rates[state]+transition_rate_epsilon[state])
-        rate_ub = model_bounds.customer_ub+model_bounds.abandonment_ub
+        total_rate_ub = model_bounds.customer_ub+model_bounds.abandonment_ub
 
-        total_increase_rate = min(ci_ub, rate_ub, min_total_increase_rate)
+        total_increase_rate = min(ci_ub, total_rate_ub, min_total_increase_rate)
         min_total_increase_rate = total_increase_rate
 
         total_customer_arrivals[state] = total_increase_rate
         if consider_abandonments(state, "customer"):
             total_customer_arrivals[state] -= abandonments[state]
-
     min_total_decrease_rate = float("inf")
     for state in get_state_iterator("server"):
         start_transition = get_start_transition(state, "server")
@@ -164,9 +188,9 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         cum_prob = sum(transition_probs[state][start_transition:end_transition+1])
 
         ci_ub = min(cum_prob+(0.5*transition_prob_epsilon[state]),1)*(transition_rates[state]+transition_rate_epsilon[state])
-        rate_ub = model_bounds.server_ub+model_bounds.abandonment_ub
+        total_rate_ub = model_bounds.server_ub+model_bounds.abandonment_ub
 
-        total_decrease_rate = min(ci_ub, rate_ub, min_total_decrease_rate)
+        total_decrease_rate = min(ci_ub, total_rate_ub, min_total_decrease_rate)
         min_total_decrease_rate = total_decrease_rate
 
         total_server_arrivals[state] = total_decrease_rate
@@ -174,19 +198,22 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
             total_server_arrivals[state] -= abandonments[state]
     
     for state in get_state_iterator("customer"):
-        max_q = model_bounds.customer_ub+model_bounds.server_ub+model_bounds.abandonment_ub
-        min_q = model_bounds.rate_lb
-        inflation_factor = 2*(max_q/min_q)
+        max_total_rate = model_bounds.customer_ub+model_bounds.server_ub+model_bounds.abandonment_ub
+        min_rate = model_bounds.rate_lb
+        inflation_factor = 2*(max_total_rate/min_rate)
         # customers
-        arrival_excess = (0.5*inflation_factor)*transition_rate_epsilon[state]
+        arrival_excess = (0.5*inflation_factor)*transition_prob_epsilon[state]
 
         ordered_customers = ext_state_rewards.customer_order[state]
 
         start_transition = get_start_transition(state, "customer")
         end_transition = get_end_transition(state, "customer")
-
         cum_prob = sum(transition_probs[state][start_transition:end_transition+1])
-        conditional_probs = order_transitions([x / cum_prob for x in transition_probs[state][start_transition:end_transition+1]], "customer")
+        if cum_prob == 0:
+            n_transitions = (end_transition+1)-start_transition
+            conditional_probs = [1/n_transitions for x in range(n_transitions)]
+        else:
+            conditional_probs = order_transitions([x / cum_prob for x in transition_probs[state][start_transition:end_transition+1]], "customer")
 
         if consider_abandonments(state, "customer"):
             # reorder everything to be at the end.
@@ -219,13 +246,15 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
 
     
     for state in get_state_iterator("server"):
-        print("-"*50)
-        print(f"considering state {state}")
-        max_q = model_bounds.server_ub+model_bounds.server_ub+model_bounds.abandonment_ub
-        min_q = model_bounds.rate_lb
-        inflation_factor = 2*(max_q/min_q)
+        max_total_rate = model_bounds.customer_ub+model_bounds.server_ub+model_bounds.abandonment_ub
+        min_rate = model_bounds.rate_lb
+        inflation_factor = 2*(max_total_rate/min_rate)
         # servers
-        arrival_excess = (0.5*inflation_factor)*transition_rate_epsilon[state]
+        arrival_excess = (0.5*inflation_factor)*transition_prob_epsilon[state]
+        print(f"state: {state}")
+        print(f"Transition prob epsilon: {transition_prob_epsilon[state]}")
+        print(f"arrival_excess: {arrival_excess}")
+        #raise Exception("stop")
 
         ordered_servers = ext_state_rewards.server_order[state]
 
@@ -233,7 +262,11 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         end_transition = get_end_transition(state, "server")
 
         cum_prob = sum(transition_probs[state][start_transition:end_transition+1])
-        conditional_probs = order_transitions([x / cum_prob for x in transition_probs[state][start_transition:end_transition+1]], "server")
+        if cum_prob == 0:
+            n_transitions = (end_transition+1)-start_transition
+            conditional_probs = [1/n_transitions for x in range(n_transitions)]
+        else:
+            conditional_probs = order_transitions([x / cum_prob for x in transition_probs[state][start_transition:end_transition+1]], "server")
 
         if consider_abandonments(state, "server"):
             # reorder everything to be at the end.
@@ -244,13 +277,10 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         ext_cond_probs = copy.copy(conditional_probs)
         maximal_class = ext_state_rewards.server_order[state][-1]
         if (not consider_abandonments(state, "server")) and maximal_class == len(conditional_probs)-1:
-            print("trimming maximal class")
             maximal_class = ext_state_rewards.server_order[state][-2]
         ext_cond_probs[maximal_class] += arrival_excess
         burned_prob = 0
         for server_type in ext_state_rewards.server_order[state]:
-            print("-"*20)
-            print(f"considering type {server_type}")
             min_prob = 0
 
             if server_type == len(conditional_probs)-1:
@@ -266,13 +296,5 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
                 ext_cond_probs[server_type] -= (abandonments[state]/(total_server_arrivals[state]+abandonments[state]))
         total_rate = total_server_arrivals[state] + (abandonments[state] if consider_abandonments(state, "server") else 0)
         server_rates[state] = [total_rate * p for p in ext_cond_probs]
-        print(f"conditional_probs: {conditional_probs}")
-        print(f"ext_cond_probs: {ext_cond_probs}")
-
-    print(total_customer_arrivals)
-    print(customer_rates)
-    print(total_server_arrivals)
-    print(server_rates)
-    print(abandonments)
 
     return model.Model(ext_model_bounds.capacities, customer_rates, server_rates, abandonments, ext_state_rewards)

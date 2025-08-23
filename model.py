@@ -27,6 +27,9 @@ class Model:
         self.transition_labels = [i for i in range(-self.n_server_types, self.n_customer_types+1)]
         self.transition_rates = [self.server_rates[state][::-1] + [self.abandonment_rates[state]] + self.customer_rates[state] for state in range(0, self.n_states)]
 
+    def __str__(self):
+        return f"Aggregate customer rates: {self.aggregate_customer_rates}\naggregate server rates: {self.aggregate_server_rates}\nabandonment_rates: {self.abandonment_rates}\ncustomer rates: {self.customer_rates}\nserver rates: {self.server_rates}\nrewards: {self.state_rewards}"
+
     def get_customer_rate(self, state):
         return self.aggregate_customer_rates[state]
     
@@ -270,6 +273,20 @@ class ModelBounds:
     def n_transitions(self):
         return sum(self.n_classes)+1
 
+    def total_rate_ub(self,state):
+        if state == 0:
+            return self.abandonment_ub + self.customer_ub
+        elif state == self.n_states-1:
+            return self.abandonment_ub + self.server_ub
+        return self.abandonment_ub + self.customer_ub + self.server_ub
+
+    def total_rate_lb(self,state):
+        if state == 0:
+            return self.rate_lb*2
+        elif state == self.n_states-1:
+            return self.rate_lb*2
+        return self.rate_lb*3
+
     def get_transition_idx(self, transition_type):
         return self.transition_labels.index(transition_type)
 
@@ -324,6 +341,9 @@ class StateRewards:
         new_server_rewards = [a + [b] for a,b in zip(self.server_rewards, self.abandonment_rewards)]
         extended_rewards = StateRewards(new_customer_rewards, new_server_rewards, copy.deepcopy(self.abandonment_rewards), copy.deepcopy(self.holding_rewards))
         return extended_rewards
+
+    def __str__(self):
+        return "\n" +f"customer_rewards: {self.customer_rewards}"+f"server_rewards: {self.server_rewards}"+f"abandonment_rewards: {self.abandonment_rewards}"+f"holding_rewards: {self.holding_rewards}"
 
 
 def generate_model(bounds: ModelBounds, reward_generator: RewardGenerator, rng: np.random._generator.Generator):

@@ -29,6 +29,11 @@ class Observer:
     def get_gain(self):
         return self.total_reward/self.total_time
 
+    def get_past_n_gain(self, n):
+        reward_upto = sum(self.step_rewards[-n:])
+        time_upto = sum(self.step_times[-n:])
+        return reward_upto/time_upto
+
     def get_avg_reward_state(self):
         reward_dict = collections.defaultdict(lambda: [0,0])
 
