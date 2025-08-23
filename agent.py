@@ -67,13 +67,17 @@ class ACRLAgent(Agent):
         self.model = ac.generate_extended_model(model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param)
         self.policy = policy.Policy.full_acceptance_policy(self.model)
         self.update_policy()
+        n_policies = 1
 
     def update_policy(self):
         while True:
             new_policy = self.policy.get_improved_policy()
             if self.policy == new_policy:
-                break
+                return
             self.policy = new_policy
+        self.n_policies += 1
+        if self.n_policies >= 10:
+            raise Exception("stop - several rounds of policies")
 
     def act(self, state, transition_type):
         if transition_type == 0:

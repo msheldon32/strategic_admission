@@ -92,7 +92,6 @@ class Model:
     def get_accepted_server_types(self, state, limiting_type):
         if limiting_type == -1:
             return []
-
         threshold = self.state_rewards.server_rewards[state][limiting_type]
         return [i for i in range(self.n_server_types) if self.state_rewards.server_rewards[state][i] >= threshold]
 

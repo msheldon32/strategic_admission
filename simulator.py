@@ -53,7 +53,7 @@ class Simulator:
 
 if __name__ == "__main__":
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([2,2],[2,2])
+    model_bounds = ModelBounds([10,10],[20,20])
     model = generate_model(model_bounds, RewardGenerator(rng), rng)
 
     ideal_agent = KnownPOAgent(model)
@@ -66,8 +66,8 @@ if __name__ == "__main__":
     simulator2 = Simulator(model, ideal_agent, ideal_observer, rng)
 
     for i in range(10000000):
-        if i == 10000:
-            initial_value = observer.get_past_n_gain(10000)
+        if i == 1000:
+            initial_value = observer.get_past_n_gain(1000)
         if i != 0 and i % 100 == 0 and i > 10000:
             print(f"steps before episode: {agent.exploration.steps_before_episode}")
             #agent.parameter_estimator.print_with_confidence(agent.initial_confidence_param/agent.exploration.steps_before_episode)
