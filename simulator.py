@@ -52,8 +52,9 @@ class Simulator:
         self.state = next_state
 
 if __name__ == "__main__":
+    input("There are three issues right now in ac.py, one is that we possibly aren't enforcing monotonicity correctly, the second is that we are ocassionally getting *negative* rates, the third is that the aggregate rates seem to be below the true ones")
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([3,3],[2,2])
+    model_bounds = ModelBounds([3,3],[50,50])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
