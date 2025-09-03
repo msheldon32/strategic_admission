@@ -85,12 +85,12 @@ if __name__ == "__main__":
             #print(agent.model)
             #raise Exception("stop")
             #print(agent.parameter_estimator.transition_counts)
-        if i % 1000000 == 0 and i != 0:
-            print(f"True model:")
-            print(model)
-            print(f"Optimistic model:")
-            print(agent.model)
-            raise Exception("stop")
+        #if i % 1000000 == 0 and i != 0:
+        #    print(f"True model:")
+        #    print(model)
+        #    print(f"Optimistic model:")
+        #    print(agent.model)
+        #    raise Exception("stop")
 
         simulator.step()
         simulator2.step()

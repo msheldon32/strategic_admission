@@ -1,5 +1,6 @@
 import math
 import copy
+import random
 
 import model
 
@@ -58,7 +59,7 @@ class ParameterEstimator:
         times = self.positive_sojourn_times[state] if is_positive else self.negative_sojourn_times[state]
 
         for i, stime in enumerate(times):
-            truncation = math.sqrt(2*(i+1)/(math.pow(min_rate,2)*math.log(1/confidence_param)))
+            truncation = math.sqrt(2*(i+1)/(math.pow(min_rate,2)*math.log(2*self.model_bounds.n_states/confidence_param)))
             if stime <= truncation:
                 acc += stime
         return acc/len(self.sojourn_times[state])
@@ -69,7 +70,7 @@ class ParameterEstimator:
         inner_term = (2/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
 
         min_rate = self.model_bounds.rate_lb
-
+1
         return (4/min_rate)*math.sqrt(inner_term)
 
     def transition_rate_bounds(self, state, confidence_param, is_positive):
@@ -170,7 +171,7 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
     if model_bounds.capacities[0] > 0:
         for state in range(model_bounds.capacities[0]-1,-1,-1):
             eta_prob = max(0, positive_transitions[state][0]-(positive_epsilons[state]/2))
-            naive_eta = eta_prob/positive_rate_bounds[state][0]
+            naive_eta = eta_prob*positive_rate_bounds[state][0]
             abandonments[state] = max(max_eta, naive_eta, model_bounds.rate_lb)
             max_eta = abandonments[state]
 
@@ -178,7 +179,7 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
     if model_bounds.capacities[1] > 0:
         for state in range(model_bounds.capacities[0]+1, model_bounds.n_states):
             gamma_prob = max(0, negative_transitions[state][0]-(negative_epsilons[state]/2))
-            naive_gamma = gamma_prob/negative_rate_bounds[state][0]
+            naive_gamma = gamma_prob*negative_rate_bounds[state][0]
             abandonments[state] = max(max_gamma, naive_gamma, model_bounds.rate_lb)
             max_gamma = abandonments[state]
 
