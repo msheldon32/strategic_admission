@@ -53,6 +53,7 @@ class Simulator:
 
 if __name__ == "__main__":
     input("There are three issues right now in ac.py, one is that we possibly aren't enforcing monotonicity correctly, the second is that we are ocassionally getting *negative* rates, the third is that the aggregate rates seem to be below the true ones")
+    input("I'm not sure the negative abandonment rates have a solid interpretation, this should be strictly less than the excess-adjusted probability - actually I think it has to do with the default epsilon term.")
     rng = np.random.default_rng()
     model_bounds = ModelBounds([3,3],[50,50])
     #model_bounds.customer_ub = 4
@@ -70,8 +71,8 @@ if __name__ == "__main__":
     simulator2 = Simulator(model, ideal_agent, ideal_observer, rng)
 
     for i in range(1000000000):
-        if i == 1000:
-            initial_value = observer.get_past_n_gain(1000)
+        if i == 100:
+            initial_value = observer.get_past_n_gain(100)
         if i != 0 and i % 10000 == 0 and i > 1000:
             print(f"steps before episode: {agent.exploration.steps_before_episode}")
             #agent.parameter_estimator.print_with_confidence(agent.initial_confidence_param/agent.exploration.steps_before_episode)
