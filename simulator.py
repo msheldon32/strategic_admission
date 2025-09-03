@@ -15,7 +15,7 @@ class Simulator:
         self.observer = observer
         self.rng = rng
 
-        self.state = self.model.capacities[1] # note that this is the 0-indexed definition, we begin at 0
+        self.state = self.model.capacities[1] # note that this is the 0-indexed definition, we begin at 0 in the standard one
         self.t = 0
         self.n = 0
 
