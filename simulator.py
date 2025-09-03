@@ -53,7 +53,7 @@ class Simulator:
 
 if __name__ == "__main__":
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([1,1],[2,2])
+    model_bounds = ModelBounds([3,3],[2,2])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
