@@ -54,7 +54,7 @@ class Simulator:
 if __name__ == "__main__":
     input("There are three issues right now in ac.py, one is that we possibly aren't enforcing monotonicity correctly, the second is that we are ocassionally getting *negative* rates, the third is that the aggregate rates seem to be below the true ones")
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([3,3],[3,3])
+    model_bounds = ModelBounds([3,3],[50,50])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
@@ -72,18 +72,17 @@ if __name__ == "__main__":
     for i in range(1000000000):
         if i == 1000:
             initial_value = observer.get_past_n_gain(1000)
-        if i != 0 and i % 100000 == 0 and i > 1000:
+        if i != 0 and i % 10000 == 0 and i > 1000:
             print(f"steps before episode: {agent.exploration.steps_before_episode}")
             #agent.parameter_estimator.print_with_confidence(agent.initial_confidence_param/agent.exploration.steps_before_episode)
             print("Trailing gain (learning): ", observer.get_past_n_gain(10000))
             print("Initial gain (learning): ", initial_value)
             print("Optimistic gain (learning): ", agent.get_estimated_gain())
             print("Trailing gain (ideal): ", ideal_observer.get_past_n_gain(10000))
-            print(f"True model:")
-            print(model)
-            print(f"Optimistic model:")
-            print(agent.model)
-            raise Exception("stop")
+            #print(f"True model:")
+            #print(model)
+            #print(f"Optimistic model:")
+            #print(agent.model)
             #print(agent.parameter_estimator.transition_counts)
         #if i % 1000000 == 0 and i != 0:
         #    print(f"True model:")
