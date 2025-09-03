@@ -206,10 +206,52 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
     for state in range(model_bounds.n_states):
         excess = positive_epsilons[state]
         for _, customer_idx in extended_rewards.customer_order[state]:
-            if customer_idx = len(model_bounds.n_classes[0]):
+            if excess <= 0:
+                break
+
+            if customer_idx == len(model_bounds.n_classes[0]):
                 if state >= model_bounds.capacities[0]:
                     continue
                 # this is the abandonment class
-                min_val = abandonments[state]
+                min_val = abandonments[state]/total_positive_rates[state]
+                new_prob = max(positive_transition_params[0]-excess, min_val)
+                excess -= positive_transition_params[0]-new_prob
+                positive_transition_params[0] = new_prob
+                continue
+            new_prob = max(positive_transition_params[customer_idx+1]-excess,0)
+            excess -= positive_transition_params[customer_idx+1]-new_prob
+            customer_transition_params[customer_idx+1] += new_prob
+        best_type = extended_rewards.customer_order[state][-1][1]
+        customer_transition_params[best_type+1] += positive_epsilons[state]
     
-    raise Exception("remember, we need to first find the optimistic transition probability for the extended class, then subtract the corresponding lower bound. Use eta/total as the lb, then subtract it afterwards.")
+
+    for state in range(model_bounds.n_states):
+        excess = negative_epsilons[state]
+        for _, server_idx in extended_rewards.server_order[state]:
+            if excess <= 0:
+                break
+
+            if server_idx == len(model_bounds.n_classes[1]):
+                if state <= model_bounds.capacities[0]:
+                    continue
+                # this is the abandonment class
+                min_val = abandonments[state]/total_negative_rates[state]
+                new_prob = max(negative_transition_params[0]-excess, min_val)
+                excess -= negative_transition_params[0]-new_prob
+                negative_transition_params[0] = new_prob
+                continue
+            new_prob = max(negative_transition_params[server_idx+1]-excess,0)
+            excess -= negative_transition_params[server_idx+1]-new_prob
+            server_transition_params[server_idx+1] += new_prob
+        best_type = extended_rewards.server_order[state][-1][1]
+        server_transition_params[best_type+1] += negative_epsilons[state]
+
+    customer_rates = []
+    server_rates = []
+
+    for state in range(model_bounds.n_states):
+        state_rates = []
+
+        for customer_idx in range(self.model_bounds.n_classes[0])
+
+        customer_rates.append(state_rates)
