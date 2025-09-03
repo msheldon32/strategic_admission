@@ -63,11 +63,11 @@ class ACRLAgent(Agent):
         self.exploration = ac.Exploration(model_bounds)
 
 
-        self.initial_confidence_param = 0.25
+        self.initial_confidence_param = 0.9999
         self.model = ac.generate_extended_model(model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param)
         self.policy = policy.Policy.full_acceptance_policy(self.model)
-        self.update_policy()
         self.n_policies = 1
+        self.update_policy()
 
     def update_policy(self):
         for i in range(1000):
@@ -89,7 +89,7 @@ class ACRLAgent(Agent):
         self.parameter_estimator.observe(state, transition_type, time_elapsed)
         if self.exploration.observe(state):
             self.exploration.new_episode()
-            self.model = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/math.sqrt(self.exploration.steps_before_episode))
+            self.model = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/self.exploration.steps_before_episode)
             self.policy.model = self.model
             self.update_policy()
             #if self.exploration.n_episodes == 20:
@@ -134,7 +134,7 @@ class ClassicalACRLAgent(Agent):
         self.parameter_estimator.observe(state, transition_type, time_elapsed)
         if self.exploration.observe(state):
             self.exploration.new_episode()
-            self.model = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/math.sqrt(self.exploration.steps_before_episode))
+            self.model = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/self.exploration.steps_before_episode)
             self.policy.model = self.model
             self.update_policy()
             #if self.exploration.n_episodes == 20:

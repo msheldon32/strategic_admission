@@ -295,6 +295,12 @@ class ModelBounds:
         elif state == self.n_states-1:
             return self.rate_lb*2
         return self.rate_lb*3
+    
+    def positive_rate_ub(self):
+        return self.abandonment_ub + self.customer_ub
+    
+    def negative_rate_ub(self):
+        return self.abandonment_ub + self.server_ub
 
     def get_transition_idx(self, transition_type):
         return self.transition_labels.index(transition_type)

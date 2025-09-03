@@ -13,69 +13,84 @@ class ParameterEstimator:
         self.sojourn_times = [[] for i in range(model_bounds.n_states)]
         self.transition_counts = [[0 for j in range(model_bounds.n_transitions)] for i in range(model_bounds.n_states)]
 
+        self.positive_sojourn_times = [[] for i in range(model_bounds.n_states)]
+        self.negative_sojourn_times = [[] for i in range(model_bounds.n_states)]
+
+        self.positive_clock = 0
+        self.negative_clock = 0
+
     def observe(self, state, transition_type, time_elapsed):
         self.transition_counts[state][self.model_bounds.get_transition_idx(transition_type)] += 1
         self.sojourn_times[state].append(time_elapsed)
 
-    def sojourn_time_estimate(self, state, confidence_param):
-        if len(self.sojourn_times[state]) == 0:
-            return ((1/self.model_bounds.total_rate_lb(state))+(1/self.model_bounds.total_rate_ub(state)))/2
+        self.positive_clock += time_elapsed
+        self.negative_clock += time_elapsed
+
+        is_positive = (transition_type > 0) or (transition_type == 0 and state < 0)
+
+        if is_positive:
+            self.positive_sojourn_times[state].append(self.positive_clock)
+            self.positive_clock = 0
+        else:
+            self.negative_sojourn_times[state].append(self.negative_clock)
+            self.negative_clock = 0
+
+    def get_count(self, state, is_positive):
+        if is_positive:
+            return len(self.positive_sojourn_times[state])
+        return len(self.negative_sojourn_times[state])
+
+    def get_naive_rate_bounds(self, state, is_positive):
+        lbound = self.model_bounds.rate_lb
+        rbound = self.model_bounds.customer_ub if is_positive else self.model_bounds.customer_lb
+
+        if state < 0 and is_positive:
+            rbound += self.model_bounds.abandonment_ub
+        elif state > 0 and (not is_positive):
+            rbound += self.model_bounds.abandonment_ub
+
+        return [lbound, rbound]
+
+    def sojourn_time_estimate(self, state, confidence_param, is_positive):
         acc = 0
-        min_rate = self.model_bounds.total_rate_lb(state)
-        for i, stime in enumerate(self.sojourn_times[state]):
+        min_rate = self.model_bounds.rate_lb
+
+        times = self.positive_sojourn_times[state] if is_positive else self.negative_sojourn_times[state]
+
+        for i, stime in enumerate(times):
             truncation = math.sqrt(2*(i+1)/(math.pow(min_rate,2)*math.log(1/confidence_param)))
             if stime <= truncation:
                 acc += stime
         return acc/len(self.sojourn_times[state])
 
-    def sojourn_time_epsilon(self, state, confidence_param):
-        ct = len(self.sojourn_times[state])
+    def sojourn_time_epsilon(self, state, confidence_param, is_positive):
+        ct = self.get_count(state, is_positive)
 
-        if ct == 0:
-            return ((1/self.model_bounds.total_rate_lb(state))-(1/self.model_bounds.total_rate_ub(state)))/2
-
-        inner_term = (14/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
+        inner_term = (2/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
 
         min_rate = self.model_bounds.total_rate_lb(state)
         #max_rate = self.model_bounds.get_maximum_rate()
 
         return (4/min_rate)*math.sqrt(inner_term)
 
-    def transition_rate_bounds(self, state, confidence_param):
-        st = self.sojourn_time_estimate(state, confidence_param)
-        ste = self.sojourn_time_epsilon(state, confidence_param)
-        min_rate = self.model_bounds.total_rate_lb(state)
-        max_rate = self.model_bounds.total_rate_ub(state)
+    def transition_rate_bounds(self, state, confidence_param, is_positive):
+        ct = self.get_count(state, is_positive)
+
+        if ct == 0:
+            return self.get_naive_rate_bounds(is_positive)
+
+        st = self.sojourn_time_estimate(state, confidence_param, is_positive)
+        ste = self.sojourn_time_epsilon(state, confidence_param, is_positive)
+
+        min_rate, max_rate = self.get_naive_rate_bounds(state, is_positive)
 
         stime_lb = max(st-ste, 1/max_rate)
         stime_ub = min(st+ste, 1/min_rate)
 
         return [1/stime_ub, 1/stime_lb]
 
-    def transition_rate_estimate_loose(self, state, confidence_param):
-        if len(self.sojourn_times[state]) == 0:
-            return (self.model_bounds.total_rate_lb(state)+self.model_bounds.total_rate_ub(state))/2
-        st = self.sojourn_time_estimate(state, confidence_param)
-
-        if st == 0:
-            return (self.model_bounds.total_rate_lb(state)+self.model_bounds.total_rate_ub(state))/2
-
-        return 1/st
-        
-    def transition_rate_epsilon_loose(self, state, confidence_param):
-        ct = len(self.sojourn_times[state])
-
-        if ct == 0:
-            return (self.model_bounds.total_rate_ub(state)-self.model_bounds.total_rate_lb(state))/2
-
-        inner_term = (14/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
-
-        min_rate = self.model_bounds.get_minimum_rate()
-        max_rate = self.model_bounds.get_maximum_rate()
-
-        return (4*((max_rate**2)/min_rate)*math.sqrt(inner_term))
-
-    def transition_prob_estimate(self, state, confidence_param):
+    def transition_prob_estimate(self, state, confidence_param, is_positive):
+        raise Exception("stop, fix")
         transition_counts = copy.deepcopy(self.transition_counts[state])
         total_n_transitions = sum(transition_counts)
 
@@ -84,11 +99,12 @@ class ParameterEstimator:
 
         return [x/total_n_transitions for x in transition_counts]
 
-    def transition_prob_epsilon(self, state, confidence_param):
+    def transition_prob_epsilon(self, state, confidence_param, is_positive):
+        raise Exception("stop, fix")
         total_n_transitions = sum(self.transition_counts[state])
         if total_n_transitions == 0:
             return 1
-        inner_term = (14*self.model_bounds.n_transitions/max(1,total_n_transitions))*math.log(2*self.model_bounds.n_states/confidence_param)
+        inner_term = (2*self.model_bounds.n_transitions/max(1,total_n_transitions))*math.log(2*self.model_bounds.n_states/confidence_param)
         return (math.sqrt(inner_term))
         #return 0
 
