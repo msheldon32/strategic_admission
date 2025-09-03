@@ -99,7 +99,7 @@ class ParameterEstimator:
             if state >= self.model_bounds.capacities[1]:
                 transition_counts[0] = 0
         else:
-            transition_counts = self.transition_counts[state][:self.model_bounds.n_classes[1]][::-1]
+            transition_counts = self.transition_counts[state][:self.model_bounds.n_classes[1]+1][::-1]
             if state <= self.model_bounds.capacities[1]:
                 transition_counts[0] = 0
         total_n_transitions = sum(transition_counts)
@@ -122,7 +122,7 @@ class ParameterEstimator:
         if ct== 0:
             return 1
         transition_count = (self.model_bounds.n_classes[0]+1) if is_positive else (self.model_bounds.n_classes[1]+1)
-        inner_term = (2*transition_count/max(ct))*math.log(2*self.model_bounds.n_states/confidence_param)
+        inner_term = (2*transition_count/ct)*math.log(2*self.model_bounds.n_states/confidence_param)
         return (math.sqrt(inner_term))
 
     def print_with_confidence(self, confidence_param):
@@ -222,11 +222,20 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
             excess -= positive_transition_params[state][customer_idx+1]-new_prob
             positive_transition_params[state][customer_idx+1] += new_prob
         best_type = extended_rewards.customer_order[state][-1]
-        positive_transition_params[state][best_type+1] += positive_epsilons[state]
+        
+        if best_type == model_bounds.n_classes[0]:
+            if state >= model_bounds.capacities[1]:
+                best_type = extended_rewards.customer_order[state][-2]
+                positive_transition_params[state][best_type+1] += positive_epsilons[state]
+            else:
+                positive_transition_params[state][0] += positive_epsilons[state]
+        else:
+            positive_transition_params[state][best_type+1] += positive_epsilons[state]
     
 
     for state in range(model_bounds.n_states):
         excess = negative_epsilons[state]
+        print(negative_transition_params[state])
         for server_idx in extended_rewards.server_order[state]:
             if excess <= 0:
                 break
@@ -244,7 +253,15 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
             excess -= negative_transition_params[state][server_idx+1]-new_prob
             negative_transition_params[state][server_idx+1] += new_prob
         best_type = extended_rewards.server_order[state][-1]
-        negative_transition_params[state][best_type+1] += negative_epsilons[state]
+        
+        if best_type == model_bounds.n_classes[0]:
+            if state <= model_bounds.capacities[1]:
+                best_type = extended_rewards.server_order[state][-2]
+                negative_transition_params[state][best_type+1] += negative_epsilons[state]
+            else:
+                negative_transition_params[state][0] += negative_epsilons[state]
+        else:
+            negative_transition_params[state][best_type+1] += negative_epsilons[state]
 
     customer_rates = []
     server_rates = []
@@ -253,12 +270,12 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         state_rates = []
         positive_rate = total_positive_rates[state]
 
-        for customer_idx in range(self.model_bounds.n_classes[0]):
-            state_rates.append(positive_transition_probs[state][customer_idx+1]*positive_rate)
+        for customer_idx in range(model_bounds.n_classes[0]):
+            state_rates.append(positive_transition_params[state][customer_idx+1]*positive_rate)
 
         if state < model_bounds.capacities[1]:
             min_val = abandonments[state]/total_negative_rates[state]
-            excess_abandonment_prob = positive_transition_probs[state][0] - min_val
+            excess_abandonment_prob = positive_transition_params[state][0] - min_val
             state_rates.append(excess_abandonment_prob)
         else:
             state_rates.append(0)
@@ -269,16 +286,16 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         state_rates = []
         negative_rate = total_negative_rates[state]
 
-        for server_idx in range(self.model_bounds.n_classes[1]):
-            state_rates.append(negative_transition_probs[state][server_idx+1]*negative_rate)
+        for server_idx in range(model_bounds.n_classes[1]):
+            state_rates.append(negative_transition_params[state][server_idx+1]*negative_rate)
 
         if state > model_bounds.capacities[1]:
             min_val = abandonments[state]/total_negative_rates[state]
-            excess_abandonment_prob = negative_transition_probs[state][0] - min_val
+            excess_abandonment_prob = negative_transition_params[state][0] - min_val
             state_rates.append(excess_abandonment_prob)
         else:
             state_rates.append(0)
 
         server_rates.append(state_rates)
 
-    return model.Model(extended_model_bounds.capacities, customer_rates, server_rates, abandonments, extended_rewards)
+    return model.Model(extended_bounds.capacities, customer_rates, server_rates, abandonments, extended_rewards)
