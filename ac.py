@@ -70,7 +70,7 @@ class ParameterEstimator:
         inner_term = (2/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
 
         min_rate = self.model_bounds.rate_lb
-1
+
         return (4/min_rate)*math.sqrt(inner_term)
 
     def transition_rate_bounds(self, state, confidence_param, is_positive):
