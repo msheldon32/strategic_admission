@@ -154,6 +154,8 @@ class Exploration:
         self.n_episodes += 1
 
 def generate_extended_model(model_bounds, parameter_estimator, state_rewards, confidence_param):
+    failed = False
+
     extended_bounds = model_bounds.get_extended_bounds()
     extended_rewards = state_rewards.get_extended_rewards()
 
@@ -215,46 +217,23 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
                     continue
                 # this is the abandonment class
                 min_val = abandonments[state]/total_positive_rates[state]
-                if min_val > 1:
-                    raise Exception("very bad case, abandonments exceed total rate")
                 new_prob = max(positive_transition_params[state][0]-excess, min_val)
                 excess -= positive_transition_params[state][0]-new_prob
-                print(f"changed abandonment value from: {positive_transition_params[state][0]}")
                 positive_transition_params[state][0] = new_prob
-                print(f"...to: {positive_transition_params[state][0]} (min_val: {min_val})")
                 continue
             new_prob = max(positive_transition_params[state][customer_idx+1]-excess,0)
             excess -= positive_transition_params[state][customer_idx+1]-new_prob
             positive_transition_params[state][customer_idx+1] = new_prob
-        print(f"completed diminished probs: {positive_transition_params[state]}")
         best_type = extended_rewards.customer_order[state][-1]
         
         if best_type == model_bounds.n_classes[0]:
             if state >= model_bounds.capacities[1]:
-                print(f"did not mutate abandonments (but tried)")
                 best_type = extended_rewards.customer_order[state][-2]
                 positive_transition_params[state][best_type+1] += max((positive_epsilons[state]/2)-excess,0)
             else:
-                print(f"mutated abandonments.")
                 positive_transition_params[state][0] += max((positive_epsilons[state]/2)-excess,0)
         else:
-            print(f"did not mutate abandonments")
             positive_transition_params[state][best_type+1] += max((positive_epsilons[state]/2)-excess,0)
-        print(f"completed restored probs: {positive_transition_params[state]}")
-        print(f"original probs: {positive_transitions[state]}")
-
-        for t_prob in positive_transition_params[state]:
-            if t_prob < 0:
-                raise Exception("stop! found negative probability!")
-        if sum(positive_transition_params[state]) >1.01:
-            print(positive_transition_params[state])
-            raise Exception("stop! found excess probability!")
-        if state < model_bounds.capacities[1]:
-            if positive_transition_params[state][0] < (abandonments[state]/total_positive_rates[state]):
-                print(f"estimated prob: {positive_transition_params[state][0]}")
-                print(f"min val: {abandonments[state]/total_positive_rates[state]}")
-                print(f"state: {state}, capacities: {model_bounds.capacities}")
-                raise Exception("stop! abandonment probability is nonsensical")
     
 
     for state in range(model_bounds.n_states):
@@ -296,16 +275,17 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         for customer_idx in range(model_bounds.n_classes[0]):
             state_rates.append(positive_transition_params[state][customer_idx+1]*positive_rate)
 
+        if abs(sum(positive_transition_params[state])-1) > 0.01:
+            failed = True
+        if positive_rate < 0:
+            failed = True
+        if any([x < 0 for x in positive_transition_params[state]]):
+            failed = True
+
         if state < model_bounds.capacities[1]:
             min_val = abandonments[state]
             excess_abandonments = positive_transition_params[state][0]*positive_rate
             state_rates.append(excess_abandonments-min_val)
-            if excess_abandonments < min_val:
-                print(f"min_val", min_val)
-                print(f"excess_abandonments", excess_abandonments)
-                print(f"positive_rate", positive_rate)
-                print(f"positive transition probs", positive_transition_params[state][0])
-                raise Exception("stop! bad abandonments!")
         else:
             state_rates.append(0)
 
@@ -318,6 +298,13 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
         for server_idx in range(model_bounds.n_classes[1]):
             state_rates.append(negative_transition_params[state][server_idx+1]*negative_rate)
 
+        if abs(sum(negative_transition_params[state])-1) > 0.01:
+            failed = True
+        if negative_rate < 0:
+            failed = True
+        if any([x < 0 for x in negative_transition_params[state]]):
+            failed = True
+
         if state > model_bounds.capacities[1]:
             min_val = abandonments[state]
             excess_abandonments = negative_transition_params[state][0]*positive_rate
@@ -327,4 +314,4 @@ def generate_extended_model(model_bounds, parameter_estimator, state_rewards, co
 
         server_rates.append(state_rates)
 
-    return model.Model(extended_bounds.capacities, customer_rates, server_rates, abandonments, extended_rewards)
+    return model.Model(extended_bounds.capacities, customer_rates, server_rates, abandonments, extended_rewards), failed

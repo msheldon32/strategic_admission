@@ -1,4 +1,5 @@
 import collections
+import matplotlib.pyplot as plt
 
 class Observer:
     def __init__(self, model):
@@ -95,3 +96,28 @@ class Observer:
         self.step_states = []
 
         self.transitions = []
+
+    def plot_regret(self, ideal_gain):
+        regret = [0]
+        cum_regret = [0]
+
+        for t, x in zip(self.step_times, self.step_rewards):
+            r = (ideal_gain*t) - x
+            regret.append(r)
+            cum_regret.append(cum_regret[-1] + r)
+
+        plt.plot(cum_regret)
+        plt.show()
+    
+    def plot_total_reward(self, ideal_gain):
+        cum_reward = [0]
+        cum_gain = [0]
+
+        for t, x in zip(self.step_times, self.step_rewards):
+            g = (ideal_gain*t)
+            cum_gain.append(cum_gain[-1]+g)
+            cum_reward.append(cum_reward[-1]+x)
+        
+        plt.plot(cum_reward)
+        plt.plot(cum_gain)
+        plt.show()

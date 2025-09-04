@@ -34,6 +34,29 @@ class Policy:
 
         return new_policy
 
+    def clean(self):
+        new_policy = Policy(self.model)
+        new_policy.limiting_types = copy.deepcopy(self.limiting_types)
+
+        # go upwards from 0 and clean up customer arrivals
+        is_recurrent = True
+        for state in range(self.model.capacities[1], self.model.n_states):
+            if not is_recurrent:
+                new_policy.limiting_types[state][0] = -1
+            elif self.limiting_types[state][0] == -1:
+                is_recurrent = False
+                new_policy.limiting_types[state][0] = -1
+
+        is_recurrent = True
+        for state in range(self.model.capacities[1], -1, -1):
+            if not is_recurrent:
+                new_policy.limiting_types[state][1] = -1
+            elif self.limiting_types[state][1] == -1:
+                is_recurrent = False
+                new_policy.limiting_types[state][1] = -1
+        return new_policy
+
+
     def act(self, state, transition_type):
         if transition_type == 0:
             return True

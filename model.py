@@ -1,5 +1,6 @@
 import random
 import copy
+import math
 
 import numpy as np
 
@@ -257,8 +258,8 @@ class Model:
 class ModelBounds:
     def __init__(self, n_classes, capacities):
         self.rate_lb = 1
-        self.customer_ub = 2
-        self.server_ub = 2
+        self.customer_ub = 5
+        self.server_ub = 5
         self.abandonment_ub = 2
 
         self.n_classes = n_classes
@@ -324,11 +325,11 @@ class RewardGenerator:
         #return [[0 for stype in range(bounds.n_classes[1])] for i in range(bounds.n_states)]
 
     def generate_abandonment_rewards(self,bounds):
-        return [self.rng.uniform(-1,1) for i in range(bounds.n_states)]
+        return [self.rng.uniform(-0.5,0) for i in range(bounds.n_states)]
         #return [0 for i in range(bounds.n_states)]
 
     def generate_holding_rewards(self,bounds):
-        return [self.rng.uniform(-1,1) for i in range(bounds.n_states)]
+        return [abs(state-bounds.capacities[1])/100 for state in range(bounds.n_states)]
         #return [0 for i in range(bounds.n_states)]
 
 class StateRewards:
@@ -367,9 +368,11 @@ def generate_model(bounds: ModelBounds, reward_generator: RewardGenerator, rng: 
         probs = list(rng.dirichlet(np.ones(ct)))
         rates = [total_rate * prob for prob in probs]
         return rates
-
-    total_customer_rates = sorted([rng.uniform(bounds.rate_lb,bounds.customer_ub) for i in range(n_states)], reverse=True)
-    total_server_rates = sorted([rng.uniform(bounds.rate_lb,bounds.server_ub) for i in range(n_states)])
+    
+    customer_lb = (bounds.rate_lb+bounds.customer_ub)/2
+    server_lb   = (bounds.rate_lb+bounds.server_ub)/2
+    total_customer_rates = sorted([rng.uniform(customer_lb, bounds.customer_ub) for i in range(n_states)], reverse=True)
+    total_server_rates = sorted([rng.uniform(server_lb,bounds.server_ub) for i in range(n_states)])
 
     customer_rates = [generate_arrival_rates(bounds.n_classes[0], rate) for rate in total_customer_rates]
     server_rates = [generate_arrival_rates(bounds.n_classes[1], rate) for rate in total_server_rates]

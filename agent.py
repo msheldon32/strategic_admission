@@ -63,8 +63,8 @@ class ACRLAgent(Agent):
         self.exploration = ac.Exploration(model_bounds)
 
 
-        self.initial_confidence_param = 0.9999
-        self.model = ac.generate_extended_model(model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param)
+        self.initial_confidence_param = 0.5
+        self.model, failed = ac.generate_extended_model(model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param)
         self.policy = policy.Policy.full_acceptance_policy(self.model)
         self.n_policies = 1
         self.update_policy()
@@ -89,11 +89,13 @@ class ACRLAgent(Agent):
         self.parameter_estimator.observe(state, transition_type, time_elapsed)
         if self.exploration.observe(state):
             self.exploration.new_episode()
-            self.model = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/self.exploration.steps_before_episode)
-            self.policy.model = self.model
-            self.update_policy()
-            #if self.exploration.n_episodes == 20:
-            #    raise Exception("stop")
+            model, failed = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/self.exploration.steps_before_episode)
+            if not failed:
+                self.model = model
+                self.policy.model = self.model
+                self.update_policy()
+                #if self.exploration.n_episodes == 20:
+                #    raise Exception("stop")
     
     def get_estimated_gain(self):
         return self.model.get_gain_bias(self.policy)[1]
@@ -108,7 +110,7 @@ class ClassicalACRLAgent(Agent):
         self.exploration = ac.Exploration(model_bounds)
 
 
-        self.initial_confidence_param = 0.9999
+        self.initial_confidence_param = 0.5
         self.model = ac.generate_extended_model(model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param)
         self.policy = policy.Policy.full_acceptance_policy(self.model)
         self.update_policy()
@@ -120,6 +122,7 @@ class ClassicalACRLAgent(Agent):
             if self.policy == new_policy:
                 return
             self.policy = new_policy
+        self.policy = self.policy.clean()
         self.n_policies += 1
         #if self.n_policies >= 10:
         #    raise Exception("stop - several rounds of policies")
@@ -134,11 +137,13 @@ class ClassicalACRLAgent(Agent):
         self.parameter_estimator.observe(state, transition_type, time_elapsed)
         if self.exploration.observe(state):
             self.exploration.new_episode()
-            self.model = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/self.exploration.steps_before_episode)
-            self.policy.model = self.model
-            self.update_policy()
-            #if self.exploration.n_episodes == 20:
-            #    raise Exception("stop")
+            model, failed = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/(self.exploration.steps_before_episode))
+            if not failed:
+                self.model = model
+                self.policy.model = self.model
+                self.update_policy()
+                #if self.exploration.n_episodes == 20:
+                #    raise Exception("stop")
     
     def get_estimated_gain(self):
         return self.model.get_gain_bias(self.policy)[1]
