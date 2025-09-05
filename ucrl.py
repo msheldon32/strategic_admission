@@ -12,24 +12,17 @@ from scipy.stats import chi2
 import policy
 
 class ParameterEstimator:
-    def __init__(self, model_bounds):
+    def __init__(self, model_bounds, n_states, n_actions):
         self.model_bounds = model_bounds
 
-        self.n_states = model_bounds.n_states*model_bounds.n_transitions
-        self.n_actions = 2
+        self.n_states = n_states
+        self.n_actions = n_actions
 
         self.change_counts = [[[0 for k in range(self.n_states)] for j in range(self.n_actions)] for i in range(self.n_states)]
         self.rewards = [[[] for j in range(self.n_actions)] for i in range(self.n_states)]
 
         self.max_reward = 2
         self.min_reward = -2
-
-    def is_minimal_state(self, state):
-        # we use the convention (state)*(n_transitions) + transition_no
-        return state < self.model_bounds.n_transitions
-
-    def is_maximal_state(self, state):
-        return state >= (self.model_bounds.n_states-1)*self.model_bounds.n_transitions
 
     def observe(self, state, next_state, action, time_elapsed, reward):
         self.change_counts[state][action][next_state] += 1
@@ -80,10 +73,10 @@ class ParameterEstimator:
         print([[self.change_prob_epsilon(state, action, confidence_param) for action in range(self.n_actions)] for state in range(self.n_states)])
 
 class Exploration:
-    def __init__(self, model_bounds):
+    def __init__(self, model_bounds, n_states, n_actions):
         self.model_bounds = model_bounds
-        self.n_states = model_bounds.n_states*model_bounds.n_transitions
-        self.n_actions = 2
+        self.n_states = n_states
+        self.n_actions = n_actions
         self.sa_visit_counts = [[0 for j in range(self.n_actions)] for i in range(self.n_states)]
         self.sa_visit_counts_in_episode = [[0 for j in range(self.n_actions)] for i in range(self.n_states)]
         self.steps_before_episode = 1
@@ -121,8 +114,8 @@ def get_eva_next_u(probs, epsilon, u):
     return sum([x*y for x,y in zip(prob_estimate, u)])
 
 def get_eva_policy(parameter_estimator, model_bounds, confidence_param, n_steps):
-    n_actions = 2
-    n_states = model_bounds.n_states*model_bounds.n_transitions
+    n_states = parameter_estimator.n_states
+    n_actions = parameter_estimator.n_actions
     rewards = [[parameter_estimator.reward_ub(state, action, confidence_param) for action in range(n_actions)] for state in range(n_states)]
     prob_estimates = [[parameter_estimator.change_prob_estimate(state, action) for action in range(n_actions)] for state in range(n_states)]
     prob_epsilon = [[parameter_estimator.change_prob_epsilon(state, action, confidence_param) for action in range(n_actions)] for state in range(n_states)]

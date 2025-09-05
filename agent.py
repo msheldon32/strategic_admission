@@ -150,7 +150,7 @@ class ClassicalACRLAgent(Agent):
     def get_estimated_gain(self):
         return self.model.get_gain_bias(self.policy)[1]
 
-class UCRLAgent(Agent):
+class AlternateUCRLAgent(Agent):
     def __init__(self, model_bounds, state_rewards):
         super().__init__()
         self.parameter_estimator = ucrl.ParameterEstimator(model_bounds)
@@ -194,6 +194,73 @@ class UCRLAgent(Agent):
         # we don't *really* know the next state here
         conv_state = self.state_conversion(state, transition_type)
         self.last_observation = [conv_state, action, time_elapsed, reward]
+
+    def print(self):
+        confidence_param = self.initial_confidence_param/self.exploration.steps_before_episode
+        print("-------------------------------------------")
+        print("Policy:")
+        print(self.policy)
+        print("-------------------------------------------")
+        print("Beliefs:")
+        print(self.parameter_estimator.print(confidence_param))
+
+class UCRLAgent(Agent):
+    def __init__(self, model_bounds, state_rewards):
+        super().__init__()
+        self.state_rewards = state_rewards
+        self.model_bounds = model_bounds
+        self.exploration = ucrl.Exploration(model_bounds, model_bounds.n_states, model_bounds.n_actions)
+        self.parameter_estimator = ucrl.ParameterEstimator(model_bounds, model_bounds.n_states, model_bounds.n_actions)
+
+        self.initial_confidence_param = 0.5
+        
+        self.policy = [1 for x in range(self.model_bounds.n_states)]
+        self.update_policy()
+        
+        self.last_observation = []
+
+        # enumerate the action space
+        self.expanded_as = []
+        for customer_type in range(-1, self.model_bounds.n_classes[0]):
+            for server_type in range(-1, self.model_bounds.n_classes[1]):
+                self.expanded_as.append([customer_type, server_type])
+
+    def update_policy(self):
+        confidence_param = self.initial_confidence_param/self.exploration.steps_before_episode
+
+        self.policy = ucrl.get_eva_policy(self.parameter_estimator, self.model_bounds, confidence_param, self.exploration.steps_before_episode)
+
+    def action_conversion(self, action):
+        return self.expanded_as[action]
+
+    def accept_customer(self, state, action, customer_type):
+        limiting_customer, limiting_server = self.action_conversion(action)
+
+        if limiting_customer == -1:
+            return False 
+        return self.state_rewards.customer_rewards[state][customer_type] >= self.state_rewards.customer_rewards[state][limiting_customer]
+
+    def accept_server(self, state, action, server_type):
+        limiting_customer, limiting_server = self.action_conversion(action)
+
+        if limiting_server == -1:
+            return False 
+        return self.state_rewards.server_rewards[state][server_type] >= self.state_rewards.server_rewards[state][limiting_server]
+
+    def act(self, state, transition_type):
+        action = self.policy[state]
+        if transition_type == 0:
+            return True
+        elif transition_type < 0:
+            return self.accept_server(state, action, (-transition_type)-1)
+        return self.accept_customer(state, action, transition_type-1)
+
+    def observe(self, state, next_state, accepted, transition_type, reward, time_elapsed):
+        action = self.policy[state]
+        self.parameter_estimator.observe(state, next_state, action, time_elapsed, reward)
+        if self.exploration.observe(state, action):
+            self.exploration.new_episode()
+            self.update_policy()
 
     def print(self):
         confidence_param = self.initial_confidence_param/self.exploration.steps_before_episode
