@@ -5,6 +5,8 @@ import policy
 import model
 import ac
 
+import ucrl
+
 class Agent:
     def __init__(self):
         pass
@@ -85,7 +87,7 @@ class ACRLAgent(Agent):
         
         return self.policy.act(state, transition_type)
 
-    def observe(self,state, next_state, transition_type, reward, time_elapsed):
+    def observe(self,state, next_state, action, transition_type, reward, time_elapsed):
         self.parameter_estimator.observe(state, transition_type, time_elapsed)
         if self.exploration.observe(state):
             self.exploration.new_episode()
@@ -133,7 +135,7 @@ class ClassicalACRLAgent(Agent):
         
         return self.policy.act(state, transition_type)
 
-    def observe(self,state, next_state, transition_type, reward, time_elapsed):
+    def observe(self,state, next_state, action, transition_type, reward, time_elapsed):
         self.parameter_estimator.observe(state, transition_type, time_elapsed)
         if self.exploration.observe(state):
             self.exploration.new_episode()
@@ -147,3 +149,49 @@ class ClassicalACRLAgent(Agent):
     
     def get_estimated_gain(self):
         return self.model.get_gain_bias(self.policy)[1]
+
+class UCRLAgent(Agent):
+    def __init__(self, model_bounds, state_rewards):
+        super().__init__()
+        self.parameter_estimator = ucrl.ParameterEstimator(model_bounds)
+        self.state_rewards = state_rewards
+        self.model_bounds = model_bounds
+        self.exploration = ucrl.Exploration(model_bounds)
+
+        self.initial_confidence_param = 0.5
+        
+        self.policy = [1 for x in range(self.model_bounds.n_states * self.model_bounds.n_transitions)]
+        self.update_policy()
+        
+        self.last_observation = []
+        raise Exception("We need to delay reporting the current state to the parameter estimator *until* the new transition has been observed")
+
+    def update_policy():
+        confidence_param = self.initial_confidence_param/self.exploration.steps_before_episode
+
+        self.policy = ucrl.get_eva_policy(self.parameter_estimator, self.model_bounds, confidence_param, self.exploration.steps_before_episode)
+
+    def state_conversion(self, state, transition_type):
+        return (state*self.model_bounds.n_transitions)+(transition_type+self.model_bounds.n_classes[1])
+
+    def act(self, state, transition_type):
+        new_state = self.state_conversion(state, transition_type)
+        if len(self.last_observation) > 0:
+            self.analyze_transition(new_state)
+
+        if transition_type == 0:
+            return True
+
+        return self.policy[new_state] == 1
+
+    def analyze_transition(self, new_state):
+        state, action, time_elapsed, reward = self.last_observation
+        self.parameter_estimator.observe(state, new_state, action, time_elapsed, reward)
+        if self.exploration.observe(state, action):
+            self.exploration.new_episode()
+            self.update_policy()
+
+    def observe(self, state, next_state, action, transition_type, reward, time_elapsed):
+        # we don't *really* know the next state here
+        conv_state = self.state_conversion(state, transition_type)
+        self.last_observation = [conv_state, action, time_elapsed, reward]

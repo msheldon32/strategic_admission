@@ -42,7 +42,9 @@ class Simulator:
 
         next_state = self.model.get_next_state(self.state, transition_type, accept)
 
-        self.agent.observe(self.state, next_state, transition_type, reward, time_elapsed)
+        action_no = 1 if accept else 0
+
+        self.agent.observe(self.state, next_state, action, transition_type, reward, time_elapsed)
         self.observer.observe(self.state, next_state, transition_type, reward, time_elapsed)
 
         if accept:
