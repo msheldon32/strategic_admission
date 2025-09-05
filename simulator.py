@@ -55,7 +55,7 @@ if __name__ == "__main__":
     input("There are three issues right now in ac.py, one is that we possibly aren't enforcing monotonicity correctly, the second is that we are ocassionally getting *negative* rates, the third is that the aggregate rates seem to be below the true ones")
     input("I'm not sure the negative abandonment rates have a solid interpretation, this should be strictly less than the excess-adjusted probability - actually I think it has to do with the default epsilon term.")
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([5,5],[30,30])
+    model_bounds = ModelBounds([5,5],[50,50])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
@@ -79,7 +79,7 @@ if __name__ == "__main__":
             print(f"steps before episode: {agent.exploration.steps_before_episode}")
             #agent.parameter_estimator.print_with_confidence(agent.initial_confidence_param/agent.exploration.steps_before_episode)
             print("Trailing gain (learning): ", observer.get_past_n_gain(10000))
-            print("Baseline gain (learning): ", model.get_gain_bias(fap)[1])
+            print("Baseline gain (naive admission): ", model.get_gain_bias(fap)[1])
             print("Optimistic gain (learning): ", agent.get_estimated_gain())
             print("Trailing gain (ideal): ", ideal_observer.get_past_n_gain(10000))
             print("Ideal gain (ideal): ", ideal_agent.get_estimated_gain())
@@ -88,7 +88,7 @@ if __name__ == "__main__":
             #print(f"Optimistic model:")
             #print(agent.model)
             #print(agent.parameter_estimator.transition_counts)
-        if i % 100000 == 0 and i != 0:
+        if i % 1000000 == 0 and i != 0:
             print(f"True model:")
             print(model)
             print(f"Optimistic model:")

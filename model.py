@@ -213,7 +213,8 @@ class Model:
         rhs_vector = -np.concatenate([reward_vector, np.zeros(1)])
 
         # solve Zh = g-r, or Ax = -r
-        gain_bias_vector = np.linalg.solve(lhs_matrix, rhs_vector)
+        #lhs_norm = np.linalg.norm(lhs_matrix, axis=1)
+        gain_bias_vector = np.linalg.solve(lhs_matrix , rhs_vector)
 
         #raise Exception("this doesn't look right, bottom value should be 0")
 
@@ -283,6 +284,12 @@ class ModelBounds:
     def n_transitions(self):
         return sum(self.n_classes)+1
 
+    @property
+    def n_actions(self):
+        n_cs_actions = self.n_classes[0]+1
+        n_ss_actions = self.n_classes[1]+1
+        return n_cs_actions*n_ss_actions
+
     def total_rate_ub(self,state):
         if state == 0:
             return self.abandonment_ub + self.customer_ub
@@ -329,7 +336,7 @@ class RewardGenerator:
         #return [0 for i in range(bounds.n_states)]
 
     def generate_holding_rewards(self,bounds):
-        return [abs(state-bounds.capacities[1])/100 for state in range(bounds.n_states)]
+        return [-abs(state-bounds.capacities[1])/50 for state in range(bounds.n_states)]
         #return [0 for i in range(bounds.n_states)]
 
 class StateRewards:
