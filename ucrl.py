@@ -32,7 +32,7 @@ class ParameterEstimator:
         return state >= (self.model_bounds.n_states-1)*self.model_bounds.n_transitions
 
     def observe(self, state, next_state, action, time_elapsed, reward):
-        self.transition_counts[state][action][next_state] += 1
+        self.change_counts[state][action][next_state] += 1
         clipped_reward = max(min(reward, self.max_reward), self.min_reward)
         self.rewards[state][action].append(clipped_reward)
 

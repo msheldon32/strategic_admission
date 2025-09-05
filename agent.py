@@ -16,7 +16,7 @@ class Agent:
             return True
         return random.choice([True, False])
 
-    def observe(self,state, next_state, transition_type, reward, time_elapsed):
+    def observe(self,state, next_state, action, transition_type, reward, time_elapsed):
         pass
 
 class DeterministicAgent(Agent):
@@ -164,7 +164,6 @@ class UCRLAgent(Agent):
         self.update_policy()
         
         self.last_observation = []
-        raise Exception("We need to delay reporting the current state to the parameter estimator *until* the new transition has been observed")
 
     def update_policy(self):
         confidence_param = self.initial_confidence_param/self.exploration.steps_before_episode
