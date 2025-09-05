@@ -4,7 +4,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from agent import KnownPOAgent, DeterministicAgent, ACRLAgent, ClassicalACRLAgent, UCRLAgent
+from agent import KnownPOAgent, DeterministicAgent, ACRLAgent, ClassicalACRLAgent, UCRLAgent, AblationACRLAgent
 from model import generate_model, ModelBounds, RewardGenerator
 from observer import Observer
 from policy import Policy
@@ -55,9 +55,9 @@ class Simulator:
         self.state = next_state
 
 if __name__ == "__main__":
-    input("Double check lower optimistic gain for low state/action sizes")
+    input("Bounds are now flat")
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([1,1],[2,2])
+    model_bounds = ModelBounds([3,3],[25,25])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
@@ -65,13 +65,16 @@ if __name__ == "__main__":
 
     ideal_agent = KnownPOAgent(model)
     agent = ACRLAgent(model_bounds, model.state_rewards)
+    agent_ablation = AblationACRLAgent(model_bounds, model.state_rewards)
     ucrl_agent = UCRLAgent(model_bounds, model.state_rewards)
     observer = Observer(model)
+    ablation_observer = Observer(model)
     ideal_observer = Observer(model)
     ucrl_observer = Observer(model)
     simulator = Simulator(model, agent, observer, rng)
     simulator2 = Simulator(model, ideal_agent, ideal_observer, rng)
     simulator_ucrl = Simulator(model, ucrl_agent, ucrl_observer, rng)
+    simulator_ablation = Simulator(model, agent_ablation, ablation_observer, rng)
 
     fap = Policy.full_acceptance_policy(model)
 
@@ -82,6 +85,7 @@ if __name__ == "__main__":
             print(f"steps before episode: {agent.exploration.steps_before_episode}")
             #agent.parameter_estimator.print_with_confidence(agent.initial_confidence_param/agent.exploration.steps_before_episode)
             print("Trailing gain (learning): ", observer.get_past_n_gain(10000))
+            print("Trailing gain (ablation): ", ablation_observer.get_past_n_gain(10000))
             print("Baseline gain (naive admission): ", model.get_gain_bias(fap)[1])
             print("Optimistic gain (learning): ", agent.get_estimated_gain())
             print("Trailing gain (ideal): ", ideal_observer.get_past_n_gain(10000))
@@ -101,14 +105,16 @@ if __name__ == "__main__":
             #agent.parameter_estimator.print_with_confidence(confidence_param)
             #raise Exception("stop")
             #ucrl_agent.print()
-            #observer.plot_regret(ideal_agent.get_estimated_gain(), "b")
+            observer.plot_regret(ideal_agent.get_estimated_gain(), "b")
             #ucrl_observer.plot_regret(ideal_agent.get_estimated_gain(), "r")
-            #plt.show()
+            ablation_observer.plot_regret(ideal_agent.get_estimated_gain(), "r")
+            plt.show()
             #observer.plot_total_reward(ideal_agent.get_estimated_gain())
 
         simulator.step()
         simulator2.step()
         simulator_ucrl.step()
+        simulator_ablation.step()
 
     print("Simulated gain: ", observer.get_gain())
     print("Estimated gain: ", agent.get_estimated_gain())

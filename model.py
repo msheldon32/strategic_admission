@@ -213,8 +213,8 @@ class Model:
         rhs_vector = -np.concatenate([reward_vector, np.zeros(1)])
 
         # solve Zh = g-r, or Ax = -r
-        #lhs_norm = np.linalg.norm(lhs_matrix, axis=1)
-        gain_bias_vector = np.linalg.solve(lhs_matrix , rhs_vector)
+        lhs_norm = np.linalg.norm(lhs_matrix, axis=1)
+        gain_bias_vector = np.linalg.solve(lhs_matrix/lhs_norm, rhs_vector/lhs_norm)
 
         #raise Exception("this doesn't look right, bottom value should be 0")
 
@@ -258,10 +258,11 @@ class Model:
 
 class ModelBounds:
     def __init__(self, n_classes, capacities):
+        #input("bounds changed to flat ones")
         self.rate_lb = 1
-        self.customer_ub = 5
-        self.server_ub = 5
-        self.abandonment_ub = 2
+        self.customer_ub = 5.0
+        self.server_ub = 5.0
+        self.abandonment_ub = 2.0
 
         self.n_classes = n_classes
         self.capacities = capacities
