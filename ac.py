@@ -56,6 +56,10 @@ class ParameterEstimator:
         acc = 0
         min_rate = self.model_bounds.rate_lb
 
+        ct = self.get_count(state, is_positive)
+        if ct == 0:
+            return min_rate
+
         times = self.positive_sojourn_times[state] if is_positive else self.negative_sojourn_times[state]
 
         for i, stime in enumerate(times):
@@ -66,8 +70,10 @@ class ParameterEstimator:
 
     def sojourn_time_epsilon(self, state, confidence_param, is_positive):
         ct = self.get_count(state, is_positive)
+        if ct == 0:
+            return float("inf")
 
-        inner_term = (2/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
+        inner_term = (4/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
 
         min_rate = self.model_bounds.rate_lb
 
@@ -127,12 +133,20 @@ class ParameterEstimator:
         return (math.sqrt(inner_term))
 
     def print_with_confidence(self, confidence_param):
+        print(f"using confidence param: ", confidence_param)
+        print(f"adjusted value: ", confidence_param/(2*self.model_bounds.n_states))
         transition_probs_pos = [self.transition_prob_estimate(state, confidence_param, True) for state in range(self.model_bounds.n_states)]
         transition_epsilon_pos = [self.transition_prob_epsilon(state, confidence_param, True) for state in range(self.model_bounds.n_states)]
         transition_probs_neg = [self.transition_prob_estimate(state, confidence_param, False) for state in range(self.model_bounds.n_states)]
         transition_epsilon_neg = [self.transition_prob_epsilon(state, confidence_param, False) for state in range(self.model_bounds.n_states)]
         pos_bounds = [self.transition_rate_bounds(state, confidence_param, True) for state in range(self.model_bounds.n_states)]
         neg_bounds = [self.transition_rate_bounds(state, confidence_param, False) for state in range(self.model_bounds.n_states)]
+        pos_ste = [self.sojourn_time_estimate(state, confidence_param, True) for state in range(self.model_bounds.n_states)]
+        neg_ste = [self.sojourn_time_estimate(state, confidence_param, False) for state in range(self.model_bounds.n_states)]
+        pos_steps = [self.sojourn_time_epsilon(state, confidence_param, True) for state in range(self.model_bounds.n_states)]
+        neg_steps = [self.sojourn_time_epsilon(state, confidence_param, False) for state in range(self.model_bounds.n_states)]
+        pos_st = [sum(self.positive_sojourn_times[state])/max(len(self.positive_sojourn_times[state]),1) for state in range(self.model_bounds.n_states)]
+        neg_st = [sum(self.negative_sojourn_times[state])/max(len(self.negative_sojourn_times[state]),1) for state in range(self.model_bounds.n_states)]
         print("---------------------------------------")
         print("Transition probabilities")
         print("Positive:")
@@ -145,6 +159,14 @@ class ParameterEstimator:
         print(pos_bounds)
         print("Negative:")
         print(neg_bounds)
+        print("---------------------------------------")
+        print("Sojourn time estimates")
+        print("Positive:")
+        print(f"observed values: {pos_st}")
+        print([f"{x} +- {e}" for x,e in zip(pos_ste, pos_steps)])
+        print("Negative:")
+        print(f"observed values: {neg_st}")
+        print([f"{x} +- {e}" for x,e in zip(neg_ste, neg_steps)])
 
 
 
