@@ -39,7 +39,7 @@ class ParameterEstimator:
     def change_prob_estimate(self, state, action):
         ct = sum(self.change_counts[state][action])
 
-        if total_n_transitions == 0:
+        if ct == 0:
             return [(1/self.n_states) for x in range(self.n_states)]
 
         return [x/ct for x in self.change_counts[state][action]]
@@ -54,6 +54,8 @@ class ParameterEstimator:
 
     def reward_estimate(self, state, action):
         ct = len(self.rewards[state][action])
+        if ct == 0:
+            return 1
         total = sum(self.rewards[state][action])
 
         return total/ct
@@ -61,7 +63,7 @@ class ParameterEstimator:
     def reward_epsilon(self, state, action, confidence_param):
         ct = len(self.rewards[state][action])
 
-        inner_term = (7/(2*ct))*math.log((2*self.n_actions*self.n_states)/confidence_param)
+        inner_term = (7/(2*max(ct,1)))*math.log((2*self.n_actions*self.n_states)/confidence_param)
         return 2*math.sqrt(inner_term) # added in the 2 for reward scaling
 
     def reward_ub(self, state, action, confidence_param):
@@ -92,7 +94,7 @@ class Exploration:
 
 def get_eva_next_u(probs, epsilon, u):
     sorted_states = sorted([(x, i) for i, x in enumerate(u)])
-    sorted_states = [x[1] for x in sorted_actions]
+    sorted_states = [x[1] for x in sorted_states]
 
     prob_estimate = copy.deepcopy(probs)
     prob_estimate[sorted_states[-1]] += (epsilon/2)
@@ -106,28 +108,28 @@ def get_eva_next_u(probs, epsilon, u):
         total_prob -= (prob_estimate[state]-new_prob)
         prob_estimate[state] = new_prob
 
-    return prob_estimate
+    return sum([x*y for x,y in zip(prob_estimate, u)])
 
 def get_eva_policy(parameter_estimator, model_bounds, confidence_param, n_steps):
     n_actions = 2
     n_states = model_bounds.n_states*model_bounds.n_transitions
     rewards = [[parameter_estimator.reward_ub(state, action, confidence_param) for action in range(n_actions)] for state in range(n_states)]
     prob_estimates = [[parameter_estimator.change_prob_estimate(state, action) for action in range(n_actions)] for state in range(n_states)]
-    prob_epsilon = [[parameter_estimator.change_prob_epsilon(state, action) for action in range(n_actions)] for state in range(n_states)]
+    prob_epsilon = [[parameter_estimator.change_prob_epsilon(state, action, confidence_param) for action in range(n_actions)] for state in range(n_states)]
     values = [0 for x in range(n_states)]
     state_action_mapping = [0 for x in range(n_states)]
 
     while True:
         new_values = [float("-inf") for x in range(n_states)]
 
-        for state in n_states:
-            for action in n_actions:
+        for state in range(n_states):
+            for action in range(n_actions):
                 adjacent_probs = copy.deepcopy(prob_estimates[state][action])
                 next_u = get_eva_next_u(adjacent_probs, prob_epsilon[state][action], values)
                 u_candidate = rewards[state][action] + next_u
-                if u_candidate > new_values[state][action]:
+                if u_candidate > new_values[state]:
                     state_action_mapping[state] = action
-                    new_values[state][action] = u_candidate
+                    new_values[state] = u_candidate
 
         # check for convergence and update values
         max_change = max([x-y for x,y in zip(new_values, values)])

@@ -166,7 +166,7 @@ class UCRLAgent(Agent):
         self.last_observation = []
         raise Exception("We need to delay reporting the current state to the parameter estimator *until* the new transition has been observed")
 
-    def update_policy():
+    def update_policy(self):
         confidence_param = self.initial_confidence_param/self.exploration.steps_before_episode
 
         self.policy = ucrl.get_eva_policy(self.parameter_estimator, self.model_bounds, confidence_param, self.exploration.steps_before_episode)

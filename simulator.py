@@ -3,7 +3,7 @@ import math
 
 import numpy as np
 
-from agent import KnownPOAgent, DeterministicAgent, ACRLAgent, ClassicalACRLAgent
+from agent import KnownPOAgent, DeterministicAgent, ACRLAgent, ClassicalACRLAgent, UCRLAgent
 from model import generate_model, ModelBounds, RewardGenerator
 from observer import Observer
 from policy import Policy
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     input("There are three issues right now in ac.py, one is that we possibly aren't enforcing monotonicity correctly, the second is that we are ocassionally getting *negative* rates, the third is that the aggregate rates seem to be below the true ones")
     input("I'm not sure the negative abandonment rates have a solid interpretation, this should be strictly less than the excess-adjusted probability - actually I think it has to do with the default epsilon term.")
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([5,5],[50,50])
+    model_bounds = ModelBounds([2,2],[2,2])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
@@ -65,12 +65,13 @@ if __name__ == "__main__":
 
     ideal_agent = KnownPOAgent(model)
     agent = ACRLAgent(model_bounds, model.state_rewards)
-    #agent = DeterministicAgent(model, Policy.full_rejection_policy(model))
-    #agent = DeterministicAgent(model, Policy.full_acceptance_policy(model))
+    ucrl_agent = UCRLAgent(model_bounds, model.state_rewards)
     observer = Observer(model)
     ideal_observer = Observer(model)
+    ucrl_observer = Observer(model)
     simulator = Simulator(model, agent, observer, rng)
     simulator2 = Simulator(model, ideal_agent, ideal_observer, rng)
+    simulator_ucrl = Simulator(model, ucrl_agent, ucrl_observer, rng)
 
     fap = Policy.full_acceptance_policy(model)
 
@@ -85,6 +86,7 @@ if __name__ == "__main__":
             print("Optimistic gain (learning): ", agent.get_estimated_gain())
             print("Trailing gain (ideal): ", ideal_observer.get_past_n_gain(10000))
             print("Ideal gain (ideal): ", ideal_agent.get_estimated_gain())
+            print("Trailing gain (ucrl): ", ucrl_observer.get_past_n_gain(10000))
             #print(f"True model:")
             #print(model)
             #print(f"Optimistic model:")
@@ -100,6 +102,7 @@ if __name__ == "__main__":
 
         simulator.step()
         simulator2.step()
+        simulator_ucrl.step()
 
     print("Simulated gain: ", observer.get_gain())
     print("Estimated gain: ", agent.get_estimated_gain())
