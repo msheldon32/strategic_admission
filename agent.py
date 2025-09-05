@@ -194,3 +194,12 @@ class UCRLAgent(Agent):
         # we don't *really* know the next state here
         conv_state = self.state_conversion(state, transition_type)
         self.last_observation = [conv_state, action, time_elapsed, reward]
+
+    def print(self):
+        confidence_param = self.initial_confidence_param/self.exploration.steps_before_episode
+        print("-------------------------------------------")
+        print("Policy:")
+        print(self.policy)
+        print("-------------------------------------------")
+        print("Beliefs:")
+        print(self.parameter_estimator.print(confidence_param))

@@ -69,6 +69,16 @@ class ParameterEstimator:
     def reward_ub(self, state, action, confidence_param):
         return self.reward_estimate(state, action) + self.reward_epsilon(state, action, confidence_param)
 
+    def print(self, confidence_param):
+        print("state/action rewards (baseline)")
+        print([[self.reward_estimate(state, action) for action in range(self.n_actions)] for state in range(self.n_states)])
+        print("state/action reward epsilon")
+        print([[self.reward_epsilon(state, action, confidence_param) for action in range(self.n_actions)] for state in range(self.n_states)])
+        print("state/action transitions (baseline)")
+        print([[self.change_prob_estimate(state, action) for action in range(self.n_actions)] for state in range(self.n_states)])
+        print("state/action transition epsilon")
+        print([[self.change_prob_epsilon(state, action, confidence_param) for action in range(self.n_actions)] for state in range(self.n_states)])
+
 class Exploration:
     def __init__(self, model_bounds):
         self.model_bounds = model_bounds

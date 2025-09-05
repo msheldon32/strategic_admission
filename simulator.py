@@ -57,7 +57,7 @@ if __name__ == "__main__":
     input("There are three issues right now in ac.py, one is that we possibly aren't enforcing monotonicity correctly, the second is that we are ocassionally getting *negative* rates, the third is that the aggregate rates seem to be below the true ones")
     input("I'm not sure the negative abandonment rates have a solid interpretation, this should be strictly less than the excess-adjusted probability - actually I think it has to do with the default epsilon term.")
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([2,2],[2,2])
+    model_bounds = ModelBounds([1,1],[1,1])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
@@ -95,10 +95,11 @@ if __name__ == "__main__":
         if i % 1000000 == 0 and i != 0:
             print(f"True model:")
             print(model)
-            print(f"Optimistic model:")
-            print(agent.model)
-            observer.plot_regret(ideal_agent.get_estimated_gain())
-            observer.plot_total_reward(ideal_agent.get_estimated_gain())
+            ucrl_agent.print()
+            #print(f"Optimistic model:")
+            #print(agent.model)
+            #observer.plot_regret(ideal_agent.get_estimated_gain())
+            #observer.plot_total_reward(ideal_agent.get_estimated_gain())
 
         simulator.step()
         simulator2.step()
