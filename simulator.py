@@ -2,6 +2,7 @@ import random
 import math
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from agent import KnownPOAgent, DeterministicAgent, ACRLAgent, ClassicalACRLAgent, UCRLAgent
 from model import generate_model, ModelBounds, RewardGenerator
@@ -56,7 +57,7 @@ class Simulator:
 if __name__ == "__main__":
     input("Double check lower optimistic gain for low state/action sizes")
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([1,1],[10,10])
+    model_bounds = ModelBounds([1,1],[2,2])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
@@ -94,10 +95,15 @@ if __name__ == "__main__":
         if i % 1000000 == 0 and i != 0:
             print(f"True model:")
             print(model)
-            ucrl_agent.print()
-            #print(f"Optimistic model:")
-            #print(agent.model)
-            #observer.plot_regret(ideal_agent.get_estimated_gain())
+            print(f"Optimistic model:")
+            print(agent.model)
+            confidence_param = agent.get_confidence_param()
+            agent.parameter_estimator.print_with_confidence(confidence_param)
+            raise Exception("stop")
+            #ucrl_agent.print()
+            #observer.plot_regret(ideal_agent.get_estimated_gain(), "b")
+            #ucrl_observer.plot_regret(ideal_agent.get_estimated_gain(), "r")
+            #plt.show()
             #observer.plot_total_reward(ideal_agent.get_estimated_gain())
 
         simulator.step()

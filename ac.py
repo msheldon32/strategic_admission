@@ -84,8 +84,8 @@ class ParameterEstimator:
 
         min_rate, max_rate = self.get_naive_rate_bounds(state, is_positive)
 
-        stime_lb = max(st-ste, 1/max_rate)
-        stime_ub = min(st+ste, 1/min_rate)
+        stime_lb = min(max(st-ste, 1/max_rate), 1/min_rate)
+        stime_ub = min(max(st+ste, 1/max_rate), 1/min_rate)
 
         return [1/stime_ub, 1/stime_lb]
 
@@ -127,10 +127,25 @@ class ParameterEstimator:
         return (math.sqrt(inner_term))
 
     def print_with_confidence(self, confidence_param):
-        transition_rates = [self.transition_rate_estimate(state, confidence_param) for state in range(self.model_bounds.n_states)]
-        transition_epsilon = [self.transition_rate_epsilon(state, confidence_param) for state in range(self.model_bounds.n_states)]
+        transition_probs_pos = [self.transition_prob_estimate(state, confidence_param, True) for state in range(self.model_bounds.n_states)]
+        transition_epsilon_pos = [self.transition_prob_epsilon(state, confidence_param, True) for state in range(self.model_bounds.n_states)]
+        transition_probs_neg = [self.transition_prob_estimate(state, confidence_param, False) for state in range(self.model_bounds.n_states)]
+        transition_epsilon_neg = [self.transition_prob_epsilon(state, confidence_param, False) for state in range(self.model_bounds.n_states)]
+        pos_bounds = [self.transition_rate_bounds(state, confidence_param, True) for state in range(self.model_bounds.n_states)]
+        neg_bounds = [self.transition_rate_bounds(state, confidence_param, False) for state in range(self.model_bounds.n_states)]
+        print("---------------------------------------")
+        print("Transition probabilities")
+        print("Positive:")
+        print([f"{x} +- {e}" for x,e in zip(transition_probs_pos, transition_epsilon_pos)])
+        print("Negative:")
+        print([f"{x} +- {e}" for x,e in zip(transition_probs_neg, transition_epsilon_neg)])
+        print("---------------------------------------")
+        print("Transition rates")
+        print("Positive:")
+        print(pos_bounds)
+        print("Negative:")
+        print(neg_bounds)
 
-        print([f"{x} +- {e}" for x,e in zip(transition_rates, transition_epsilon)])
 
 
 class Exploration:

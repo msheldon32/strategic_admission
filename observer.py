@@ -97,7 +97,7 @@ class Observer:
 
         self.transitions = []
 
-    def plot_regret(self, ideal_gain):
+    def plot_regret(self, ideal_gain, color="r"):
         regret = [0]
         cum_regret = [0]
 
@@ -106,8 +106,8 @@ class Observer:
             regret.append(r)
             cum_regret.append(cum_regret[-1] + r)
 
-        plt.plot(cum_regret)
-        plt.show()
+        plt.plot(cum_regret, color=color)
+        #plt.show()
     
     def plot_total_reward(self, ideal_gain):
         cum_reward = [0]

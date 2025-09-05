@@ -81,6 +81,9 @@ class ACRLAgent(Agent):
         #if self.n_policies >= 10:
         #    raise Exception("stop - several rounds of policies")
 
+    def get_confidence_param(self):
+        return self.initial_confidence_param/self.exploration.steps_before_episode
+
     def act(self, state, transition_type):
         if transition_type == 0:
             return True
