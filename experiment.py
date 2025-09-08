@@ -44,13 +44,15 @@ class Experiment:
         self.failed_runs = []
 
     def run(self):
-        for bound_runs in self.runs:
+        for i, bound_runs in enumerate(self.runs):
             for run in bound_runs:
                 try:
                     run.run()
                 except Exception as e:
                     self.failed_runs.append([run, str(e)])
                     continue
+            with open(f"exp_out/bound_{i}", "wb") as f:
+                pickle.dump(bound_runs, f)
 
 if __name__ == "__main__":
     rng = np.random.default_rng(seed=1000)
@@ -61,7 +63,7 @@ if __name__ == "__main__":
             model.ModelBounds([3,3],[50,50]),
             ]
 
-    experiment = Experiment(bounds, 100, rng, 100000)
+    experiment = Experiment(bounds, 100, rng, 10000000)
 
     experiment.run()
     
