@@ -260,8 +260,8 @@ class ModelBounds:
     def __init__(self, n_classes, capacities):
         #input("bounds changed to flat ones")
         self.rate_lb = 1
-        self.customer_ub = 5.0
-        self.server_ub = 5.0
+        self.customer_ub = 10.0
+        self.server_ub = 10.0
         self.abandonment_ub = 2.0
 
         self.n_classes = n_classes
@@ -389,8 +389,8 @@ def generate_model(bounds: ModelBounds, reward_generator: RewardGenerator, rng: 
         rates = [total_rate * prob for prob in probs]
         return rates
     
-    customer_lb = (bounds.rate_lb+bounds.customer_ub)/2
-    server_lb   = (bounds.rate_lb+bounds.server_ub)/2
+    customer_lb = bounds.rate_lb
+    server_lb   = bounds.rate_lb
     total_customer_rates = sorted([rng.uniform(customer_lb, bounds.customer_ub) for i in range(n_states)], reverse=True)
     total_server_rates = sorted([rng.uniform(server_lb,bounds.server_ub) for i in range(n_states)])
 

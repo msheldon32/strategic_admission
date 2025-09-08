@@ -55,9 +55,8 @@ class Simulator:
         self.state = next_state
 
 if __name__ == "__main__":
-    input("Bounds are now flat")
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([3,3],[50,50])
+    model_bounds = ModelBounds([3,3],[10,10])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
