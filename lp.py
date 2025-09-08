@@ -7,8 +7,8 @@ import policy
 def get_optimal_policy(model):
     m = gp.Model("linear_programming")
     
-    m.setParam(GRB.Param.OptimalityTol, 1e-9)
-    m.setParam(GRB.Param.FeasibilityTol, 1e-9)
+    #m.setParam(GRB.Param.OptimalityTol, 1e-9)
+    #m.setParam(GRB.Param.FeasibilityTol, 1e-9)
 
     n_states = model.n_states
     n_actions = (model.n_customer_types+1)*(model.n_server_types+1)
