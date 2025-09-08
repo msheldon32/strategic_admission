@@ -214,7 +214,7 @@ class Model:
 
         # solve Zh = g-r, or Ax = -r
         lhs_norm = np.linalg.norm(lhs_matrix, axis=1)
-        gain_bias_vector = np.linalg.solve(lhs_matrix/lhs_norm, rhs_vector/lhs_norm)
+        gain_bias_vector = np.linalg.solve(lhs_matrix, rhs_vector)
 
         #raise Exception("this doesn't look right, bottom value should be 0")
 
@@ -359,6 +359,18 @@ class StateRewards:
         self.customer_order = [[x[1] for x in y] for y in self.customer_order]
         self.server_order = [sorted([(x,i) for i,x in enumerate(y)]) for y in self.server_rewards]
         self.server_order = [[x[1] for x in y] for y in self.server_order]
+
+    def get_accepted_customers(self, state, limiting_customer):
+        if limiting_customer == -1:
+            return []
+        idx = self.customer_order[state].index(limiting_customer)
+        return self.customer_order[state][idx:]
+
+    def get_accepted_servers(self, state, limiting_server):
+        if limiting_server == -1:
+            return []
+        idx = self.server_order[state].index(limiting_server)
+        return self.server_order[state][idx:]
 
     def get_extended_rewards(self):
         new_customer_rewards = [a + [b] for a,b in zip(self.customer_rewards, self.abandonment_rewards)]

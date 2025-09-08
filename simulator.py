@@ -4,7 +4,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-from agent import KnownPOAgent, DeterministicAgent, ACRLAgent, ClassicalACRLAgent, UCRLAgent, AblationACRLAgent
+from agent import KnownPOAgent, DeterministicAgent, ACRLAgent, UCRLAgent, AblationACRLAgent
 from model import generate_model, ModelBounds, RewardGenerator
 from observer import Observer
 from policy import Policy
@@ -57,7 +57,7 @@ class Simulator:
 if __name__ == "__main__":
     input("Bounds are now flat")
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([3,3],[25,25])
+    model_bounds = ModelBounds([3,3],[5,5])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
