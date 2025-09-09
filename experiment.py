@@ -33,15 +33,12 @@ class ExperimentRun:
             self.ablation_simulator.step()
             self.ucrl_simulator.step()
 
-    def get_observer_set(self):
-        # remove junk (transitions)
-        self.acrl_observer.transitions = []
-        self.ucrl_observer.transitions = []
-        self.ablation_observer.transitions = []
+    def summarize(self):
+        ideal_gain = self.ideal_agent.get_estimated_gain()
         return {
-                "acrl": self.acrl_observer,
-                "ablation": self.ablation_observer,
-                "ucrl": self.ucrl_observer
+                "acrl": self.acrl_observer.summarize(ideal_gain, timestep=timestep),
+                "ablation": self.ablation_observer.summarize(ideal_gain, timestep=timestep),
+                "ucrl": self.ucrl_observer.summarize(ideal_gain, timestep=timestep)
             }
 
 class Experiment:
@@ -64,7 +61,7 @@ class Experiment:
                     self.failed_runs.append([run, str(e)])
                     continue
                 with open(f"exp_out/bound_{i}/run_{run}", "wb") as f:
-                    pickle.dump(exp_run.get_observer_set(), f)
+                    pickle.dump(exp_run.summarize(), f)
 
 if __name__ == "__main__":
     # schedule: 

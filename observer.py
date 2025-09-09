@@ -121,3 +121,29 @@ class Observer:
         plt.plot(cum_reward)
         plt.plot(cum_gain)
         plt.show()
+
+    def summarize(self, ideal_gain, timestep=10000):
+        cum_reward = [0]
+        cum_regret = [0]
+        cum_time = [0]
+        for t, x in zip(self.step_times, self.step_rewards):
+            g = (ideal_gain*t)
+            cum_regret.append(cum_regret[-1]+(g- x))
+            cum_reward.append(cum_reward[-1]+x)
+            cum_time.append(cum_time[-1]+t)
+        
+        cum_reward_tstep = []
+        cum_regret_tstep = []
+        cum_time_tstep = []
+
+        while (t+1) < len(cum_gain):
+            cum_reward_tstep.append(cum_reward[t+1])
+            cum_regret_tstep.append(cum_regret[t+1])
+            cum_time_tstep.append(cum_time[t+1])
+            t += timestep
+
+        return {
+                "regret": cum_regret_tstep,
+                "reward": cum_reward_tstep,
+                "time": cum_time_tstep,
+            }
