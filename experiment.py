@@ -40,19 +40,20 @@ class Experiment:
         self.max_step_count = max_step_count
         self.rng = rng
 
-        self.runs = [[ExperimentRun(bound, self.rng, self.max_step_count) for i in range(self.runs_per_bound)] for bound in self.all_bounds]
+        #self.runs = [[ExperimentRun(bound, self.rng, self.max_step_count) for i in range(self.runs_per_bound)] for bound in self.all_bounds]
         self.failed_runs = []
 
     def run(self):
-        for i, bound_runs in enumerate(self.runs):
-            for run in bound_runs:
+        for i, bound in enumerate(self.all_bounds):
+            for run in range(self.runs_per_bound):
+                exp_run = ExperimentRun(bound, self.rng, self.max_step_count)
                 try:
-                    run.run()
+                    exp_run.run()
                 except Exception as e:
                     self.failed_runs.append([run, str(e)])
                     continue
-            with open(f"exp_out/bound_{i}", "wb") as f:
-                pickle.dump(bound_runs, f)
+                with open(f"exp_out/bound_{i}/run_{run}", "wb") as f:
+                    pickle.dump(exp_run, f)
 
 if __name__ == "__main__":
     rng = np.random.default_rng(seed=1000)
