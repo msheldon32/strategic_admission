@@ -35,6 +35,7 @@ class ExperimentRun:
 
     def summarize(self):
         ideal_gain = self.ideal_agent.get_estimated_gain()
+        timestep = 10000
         return {
                 "acrl": self.acrl_observer.summarize(ideal_gain, timestep=timestep),
                 "ablation": self.ablation_observer.summarize(ideal_gain, timestep=timestep),
