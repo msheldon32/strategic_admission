@@ -56,6 +56,11 @@ class Experiment:
                     pickle.dump(exp_run, f)
 
 if __name__ == "__main__":
+    # schedule: 
+    # seed 1000: 6 types, 11 states
+    # seed 2000: 6 types, 21 states
+    # seed 3000: 6 types, 51 states
+    # seed 4000: 6 types, 101 states
     rng = np.random.default_rng(seed=1000)
     bounds = [
             model.ModelBounds([3,3],[5,5]),
