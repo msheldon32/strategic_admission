@@ -33,6 +33,17 @@ class ExperimentRun:
             self.ablation_simulator.step()
             self.ucrl_simulator.step()
 
+    def get_observer_set(self):
+        # remove junk (transitions)
+        self.acrl_observer.transitions = []
+        self.ucrl_observer.transitions = []
+        self.ablation_observer.transitions = []
+        return {
+                "acrl": self.acrl_observer,
+                "ablation": self.ablation_observer,
+                "ucrl": self.ucrl_observer
+            }
+
 class Experiment:
     def __init__(self, all_bounds, runs_per_bound, rng, max_step_count):
         self.all_bounds = all_bounds
@@ -53,7 +64,7 @@ class Experiment:
                     self.failed_runs.append([run, str(e)])
                     continue
                 with open(f"exp_out/bound_{i}/run_{run}", "wb") as f:
-                    pickle.dump(exp_run, f)
+                    pickle.dump(exp_run.get_observer_set(), f)
 
 if __name__ == "__main__":
     # schedule: 
@@ -72,6 +83,3 @@ if __name__ == "__main__":
     experiment = Experiment(bounds, 100, rng, 10000000)
 
     experiment.run()
-    
-    with open("exp_out/experiment", "wb") as f:
-        pickle.dump(experiment, f)
