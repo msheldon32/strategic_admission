@@ -54,6 +54,8 @@ class Experiment:
 
     def run(self):
         for i, bound in enumerate(self.all_bounds):
+            lstate = bound.capacities[0]
+            rstate = bound.capacities[1]
             for run in range(self.runs_per_bound):
                 exp_run = ExperimentRun(bound, self.rng, self.max_step_count)
                 try:
@@ -61,7 +63,7 @@ class Experiment:
                 except Exception as e:
                     self.failed_runs.append([run, str(e)])
                     continue
-                with open(f"exp_out/bound_{i}/run_{run}", "wb") as f:
+                with open(f"exp_out/bound_{lstate}_{rstate}_states/run_{run}", "wb") as f:
                     pickle.dump(exp_run.summarize(), f)
 
 if __name__ == "__main__":
@@ -73,9 +75,9 @@ if __name__ == "__main__":
     rng = np.random.default_rng(seed=1000)
     bounds = [
             model.ModelBounds([3,3],[5,5]),
-            model.ModelBounds([3,3],[10,10]),
-            model.ModelBounds([3,3],[25,25]),
-            model.ModelBounds([3,3],[50,50]),
+            #model.ModelBounds([3,3],[10,10]),
+            #model.ModelBounds([3,3],[25,25]),
+            #model.ModelBounds([3,3],[50,50]),
             ]
 
     experiment = Experiment(bounds, 100, rng, 10000000)

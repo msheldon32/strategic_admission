@@ -135,8 +135,9 @@ class Observer:
         cum_reward_tstep = []
         cum_regret_tstep = []
         cum_time_tstep = []
+        t = 0
 
-        while (t+1) < len(cum_gain):
+        while (t+1) < len(cum_reward):
             cum_reward_tstep.append(cum_reward[t+1])
             cum_regret_tstep.append(cum_regret[t+1])
             cum_time_tstep.append(cum_time[t+1])

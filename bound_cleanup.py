@@ -4,7 +4,7 @@ from experiment import *
 
 import pickle
 
-for run_no in range(100):
+for run_no in range(2, 100):
     with open(f"exp_out/bound_0/run_{run_no}", "rb") as f:
         exp_run = pickle.load(f)
 
