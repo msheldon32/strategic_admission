@@ -38,7 +38,7 @@ class ExperimentRun:
                 print("Ideal gain: ", self.ideal_agent.get_estimated_gain())
                 print("Optimistic gain (learning): ", self.agent.get_estimated_gain())
 
-    def summarize(self, ideal_gain):
+    def summarize(self):
         ideal_gain = self.ideal_agent.get_estimated_gain()
         timestep = 10000
         return {
