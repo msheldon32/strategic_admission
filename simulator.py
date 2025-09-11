@@ -56,7 +56,7 @@ class Simulator:
 
 if __name__ == "__main__":
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([3,3],[10,10])
+    model_bounds = ModelBounds([3,3],[2,2])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
@@ -77,10 +77,15 @@ if __name__ == "__main__":
 
     fap = Policy.full_acceptance_policy(model)
 
+    #print(model.get_gain_bias(fap))
+    #print(model.get_gain_bias_old(fap))
+    #raise Exception("stop")
+
+
     for i in range(1000000000):
         if i == 100:
             initial_value = observer.get_past_n_gain(100)
-        if i != 0 and i % 10000 == 0 and i > 1000:
+        if i != 0 and i % 1000 == 0 and i >= 1000:
             print(f"steps before episode: {agent.exploration.steps_before_episode}")
             #agent.parameter_estimator.print_with_confidence(agent.initial_confidence_param/agent.exploration.steps_before_episode)
             print("Trailing gain (learning): ", observer.get_past_n_gain(10000))
@@ -105,7 +110,7 @@ if __name__ == "__main__":
             #raise Exception("stop")
             #ucrl_agent.print()
             observer.plot_regret(ideal_agent.get_estimated_gain(), "b")
-            #ucrl_observer.plot_regret(ideal_agent.get_estimated_gain(), "r")
+            ucrl_observer.plot_regret(ideal_agent.get_estimated_gain(), "g")
             ablation_observer.plot_regret(ideal_agent.get_estimated_gain(), "r")
             plt.show()
             #observer.plot_total_reward(ideal_agent.get_estimated_gain())

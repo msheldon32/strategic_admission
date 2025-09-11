@@ -4,11 +4,12 @@ from gurobipy import GRB
 
 import policy
 
-def get_optimal_policy(model):
+def get_optimal_policy(model, v_basis=None, c_basis=None):
     m = gp.Model("linear_programming")
     
-    #m.setParam(GRB.Param.OptimalityTol, 1e-9)
-    #m.setParam(GRB.Param.FeasibilityTol, 1e-9)
+    m.setParam(GRB.Param.OutputFlag, 0)
+    m.setParam(GRB.Param.OptimalityTol, 1e-9)
+    m.setParam(GRB.Param.FeasibilityTol, 1e-9)
 
     n_states = model.n_states
     n_actions = (model.n_customer_types+1)*(model.n_server_types+1)
@@ -36,6 +37,10 @@ def get_optimal_policy(model):
 
     m.addConstr(bias_values[model.capacities[1]] == 0)
     m.setObjective(gain, GRB.MINIMIZE)
+    m.update()
+    if v_basis is not None:
+        m.setAttr("VBasis", m.getVars(), v_basis)
+        m.setAttr("CBasis", m.getConstrs(), c_basis)
     m.optimize()
     
     out_policy = policy.Policy(model)
@@ -47,5 +52,7 @@ def get_optimal_policy(model):
             if slack.X[state, action_no] < min_slack:
                 min_slack = slack.X[state,action_no]
                 out_policy.limiting_types[-1] = action
-    return out_policy, gain.X
+    v_basis = m.getAttr("VBasis", m.getVars())
+    c_basis = m.getAttr("CBasis", m.getConstrs())
+    return out_policy, gain.X, v_basis, c_basis
 

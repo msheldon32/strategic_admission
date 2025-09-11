@@ -147,4 +147,5 @@ class Observer:
                 "regret": cum_regret_tstep,
                 "reward": cum_reward_tstep,
                 "time": cum_time_tstep,
+                "ideal_gain": ideal_gain
             }

@@ -72,7 +72,7 @@ if __name__ == "__main__":
     # seed 2000: 6 types, 21 states
     # seed 3000: 6 types, 51 states
     # seed 4000: 6 types, 101 states
-    rng = np.random.default_rng(seed=1000)
+    rng = np.random.default_rng(seed=3000)
     bounds = [
             model.ModelBounds([3,3],[5,5]),
             #model.ModelBounds([3,3],[10,10]),
@@ -80,6 +80,6 @@ if __name__ == "__main__":
             #model.ModelBounds([3,3],[50,50]),
             ]
 
-    experiment = Experiment(bounds, 100, rng, 10000000)
+    experiment = Experiment(bounds, 50, rng, 2000000)
 
     experiment.run()

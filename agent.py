@@ -40,8 +40,23 @@ class KnownPOAgent(Agent):
     def __init__(self, model):
         super().__init__()
         self.model = model
-        #self.policy = policy.Policy.full_acceptance_policy(model)
-        self.policy, self.gain = lp.get_optimal_policy(self.model)
+        self.policy = policy.Policy.full_acceptance_policy(model)
+        #self.policy, self.gain, _, _ = lp.get_optimal_policy(self.model)
+        found_policy = False
+        for i in range(200):
+            new_policy = self.policy.get_improved_policy()
+            if self.policy == new_policy:
+                found_policy = True
+                break
+            self.policy = new_policy
+        if not found_policy:
+            print("falling back to linear programming")
+            print(f"old gain: {self.model.get_gain_bias(self.policy)[1]}")
+            self.policy, self.gain, _, _ = lp.get_optimal_policy(self.model)
+            self.gain = float(self.gain)
+            print(f"new gain: {self.gain}")
+        else:
+            _, self.gain = self.model.get_gain_bias(self.policy)
 
     def act(self, state, transition_type):
         if transition_type == 0:
@@ -62,15 +77,26 @@ class ACRLAgent(Agent):
         self.exploration = ac.Exploration(model_bounds)
 
 
-        self.initial_confidence_param = 0.5
+        self.initial_confidence_param = 0.999
         self.model, failed = ac.generate_extended_model(model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param)
         self.policy = policy.Policy.full_acceptance_policy(self.model)
         self.n_policies = 1
         self.gain = float("-inf")
+
+        self.v_basis = None
+        self.c_basis = None
+
         self.update_policy()
 
     def update_policy(self):
-        self.policy, self.gain = lp.get_optimal_policy(self.model)
+        #self.policy, self.gain, self.v_basis, self.c_basis = lp.get_optimal_policy(self.model, self.v_basis, self.c_basis)
+        for i in range(200):
+            new_policy = self.policy.get_improved_policy()
+            if self.policy == new_policy:
+                break
+            self.policy = new_policy
+        self.policy = self.policy.clean()
+        _, self.gain = self.model.get_gain_bias(self.policy)
 
     def get_confidence_param(self):
         return self.initial_confidence_param/self.exploration.steps_before_episode
@@ -85,6 +111,7 @@ class ACRLAgent(Agent):
         self.parameter_estimator.observe(state, transition_type, time_elapsed)
         if self.exploration.observe(state):
             self.exploration.new_episode()
+            print(f"new episode. total episodes: {self.exploration.n_episodes}")
             model, failed = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/self.exploration.steps_before_episode)
             if not failed:
                 self.model = model
@@ -106,15 +133,25 @@ class AblationACRLAgent(Agent):
         self.exploration = ac.Exploration(model_bounds)
 
 
-        self.initial_confidence_param = 0.5
+        self.initial_confidence_param = 0.999
         self.model, failed = ac_ablation.generate_extended_model_ablation(model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param)
         self.policy = policy.Policy.full_acceptance_policy(self.model)
         self.n_policies = 1
         self.gain = float("-inf")
+        self.v_basis = None
+        self.c_basis = None
+
         self.update_policy()
 
     def update_policy(self):
-        self.policy, self.gain = lp.get_optimal_policy(self.model)
+        #self.policy, self.gain, self.v_basis, self.c_basis = lp.get_optimal_policy(self.model, self.v_basis, self.c_basis)
+        for i in range(200):
+            new_policy = self.policy.get_improved_policy()
+            if self.policy == new_policy:
+                break
+            self.policy = new_policy
+        self.policy = self.policy.clean()
+        _, self.gain = self.model.get_gain_bias(self.policy)
 
     def get_confidence_param(self):
         return self.initial_confidence_param/self.exploration.steps_before_episode
@@ -197,12 +234,14 @@ class AlternateUCRLAgent(Agent):
 class UCRLAgent(Agent):
     def __init__(self, model_bounds, state_rewards):
         super().__init__()
+
         self.state_rewards = state_rewards
         self.model_bounds = model_bounds
-        self.exploration = ucrl.Exploration(model_bounds, model_bounds.n_states, model_bounds.n_actions)
-        self.parameter_estimator = ucrl.ParameterEstimator(model_bounds, model_bounds.n_states, model_bounds.n_actions)
-
+        self.U = self.model_bounds.customer_ub + self.model_bounds.abandonment_ub + self.model_bounds.server_ub
         self.initial_confidence_param = 0.5
+
+        self.exploration = ucrl.Exploration(model_bounds, model_bounds.n_states, model_bounds.n_actions)
+        self.parameter_estimator = ucrl.ParameterEstimator(model_bounds, model_bounds.n_states, model_bounds.n_actions, self.U, self.state_rewards)
         
         self.policy = [1 for x in range(self.model_bounds.n_states)]
         self.update_policy()

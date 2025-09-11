@@ -187,7 +187,7 @@ class Model:
 
         return np.linalg.solve(A,b)
 
-    def get_gain_bias(self, policy):
+    def get_gain_bias_old(self, policy):
         generator = self.get_generator_matrix(policy)
         reward_vector = self.get_reward_vector(policy)
 
@@ -220,6 +220,58 @@ class Model:
 
         # extract bias vector and gain
         return gain_bias_vector[:-1], gain_bias_vector[-1]
+
+    def get_probabilities(self, policy):
+        reward_vector = self.get_reward_vector(policy)
+        all_transitions = [self.get_transition_rates(state, policy.get_limiting_types(state)) for state in range(self.n_states)]
+
+
+        # start with 0
+        F = [0 for i in range(self.n_states)]
+        F[self.capacities[1]] = 1
+        for i in range(self.capacities[1]+1, self.n_states):
+            F[i] = (all_transitions[i-1][1]/all_transitions[i][0])*F[i-1]
+        
+        for i in range(self.capacities[1]-1, -1, -1):
+            F[i] = (all_transitions[i+1][0]/all_transitions[i][1])*F[i+1]
+
+        total_F = sum(F)
+        return [f / total_F for f in F]
+
+    def get_gain_bias(self, policy):
+        reward_vector = self.get_reward_vector(policy)
+        all_transitions = [self.get_transition_rates(state, policy.get_limiting_types(state)) for state in range(self.n_states)]
+        
+        probabilities = self.get_probabilities(policy)
+
+        gain = sum([p*r for p, r in zip(probabilities, reward_vector)])
+
+        bias = [0 for i in range(self.n_states)]
+        rel_bias = [0 for i in range(self.n_states)]
+
+        # set the default bias to 0 for the state at 0
+        bias[self.capacities[1]] = 0
+
+        for i in range(self.n_states-1, -1, -1):
+            rate_up = all_transitions[i][1]
+            rate_down = all_transitions[i][0]
+            if rate_down == 0:
+                break
+            if i == self.n_states-1:
+                rel_bias[i] = (reward_vector[i] - gain)/rate_down
+            else:
+                rel_bias[i] = (rate_up/rate_down)*rel_bias[i+1] + (reward_vector[i] - gain)/rate_down
+        for i in range(0, self.n_states):
+            rate_up = all_transitions[i][1]
+            rate_down = all_transitions[i][0]
+            if rate_up == 0:
+                break
+            if i == 0:
+                rel_bias[i] = (gain - reward_vector[i])/rate_up
+            else:
+                rel_bias[i] = (rate_down/rate_up)*rel_bias[i-1] + (gain-reward_vector[i])/rate_up
+        bias = [sum(rel_bias[:i]) for i in range(self.n_states)]
+        return bias, gain
     
     def get_maximal_action(self, state, bias, gain):
         max_bias = float("-inf")
@@ -262,7 +314,7 @@ class ModelBounds:
         self.rate_lb = 1
         self.customer_ub = 10.0
         self.server_ub = 10.0
-        self.abandonment_ub = 2.0
+        self.abandonment_ub = 2
 
         self.n_classes = n_classes
         self.capacities = capacities

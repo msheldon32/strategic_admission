@@ -12,8 +12,10 @@ from scipy.stats import chi2
 import policy
 
 class ParameterEstimator:
-    def __init__(self, model_bounds, n_states, n_actions):
+    def __init__(self, model_bounds, n_states, n_actions, U, state_rewards):
         self.model_bounds = model_bounds
+        self.U = U
+        self.state_rewards = state_rewards
 
         self.n_states = n_states
         self.n_actions = n_actions
@@ -25,9 +27,16 @@ class ParameterEstimator:
         self.min_reward = -2
 
     def observe(self, state, next_state, action, time_elapsed, reward):
+        # uniformize
+        n_steps = max(round(time_elapsed / self.U),1)
+        self.change_counts[state][action][state] += n_steps-1
         self.change_counts[state][action][next_state] += 1
-        clipped_reward = max(min(reward, self.max_reward), self.min_reward)
-        self.rewards[state][action].append(clipped_reward)
+
+        # observe holding cost for each self-transition
+        holding_list = [self.U * self.state_rewards.holding_rewards[state] for i in range(n_steps-1)]
+        self.rewards[state][action] += holding_list
+
+        self.rewards[state][action].append(reward - sum(holding_list))
 
     def change_prob_estimate(self, state, action):
         ct = sum(self.change_counts[state][action])
