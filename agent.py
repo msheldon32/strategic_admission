@@ -90,13 +90,22 @@ class ACRLAgent(Agent):
 
     def update_policy(self):
         #self.policy, self.gain, self.v_basis, self.c_basis = lp.get_optimal_policy(self.model, self.v_basis, self.c_basis)
+        found_policy = False
         for i in range(200):
             new_policy = self.policy.get_improved_policy()
             if self.policy == new_policy:
+                found_policy = True
                 break
             self.policy = new_policy
+        if not found_policy:
+            print("falling back to linear programming")
+            print(f"old gain: {self.model.get_gain_bias(self.policy)[1]}")
+            self.policy, self.gain, _, _ = lp.get_optimal_policy(self.model)
+            self.gain = float(self.gain)
+            print(f"new gain: {self.gain}")
+        else:
+            _, self.gain = self.model.get_gain_bias(self.policy)
         self.policy = self.policy.clean()
-        _, self.gain = self.model.get_gain_bias(self.policy)
 
     def get_confidence_param(self):
         return self.initial_confidence_param/self.exploration.steps_before_episode
@@ -145,13 +154,22 @@ class AblationACRLAgent(Agent):
 
     def update_policy(self):
         #self.policy, self.gain, self.v_basis, self.c_basis = lp.get_optimal_policy(self.model, self.v_basis, self.c_basis)
+        found_policy = False
         for i in range(200):
             new_policy = self.policy.get_improved_policy()
             if self.policy == new_policy:
+                found_policy = True
                 break
             self.policy = new_policy
+        if not found_policy:
+            print("falling back to linear programming")
+            print(f"old gain: {self.model.get_gain_bias(self.policy)[1]}")
+            self.policy, self.gain, _, _ = lp.get_optimal_policy(self.model)
+            self.gain = float(self.gain)
+            print(f"new gain: {self.gain}")
+        else:
+            _, self.gain = self.model.get_gain_bias(self.policy)
         self.policy = self.policy.clean()
-        _, self.gain = self.model.get_gain_bias(self.policy)
 
     def get_confidence_param(self):
         return self.initial_confidence_param/self.exploration.steps_before_episode

@@ -46,12 +46,12 @@ def get_optimal_policy(model, v_basis=None, c_basis=None):
     out_policy = policy.Policy(model)
 
     for state in range(n_states):
-        out_policy.limiting_types.append((-1,-1))
+        out_policy.limiting_types.append([-1,-1])
         min_slack = float("inf")
         for action_no, action in enumerate(action_mapping):
             if slack.X[state, action_no] < min_slack:
                 min_slack = slack.X[state,action_no]
-                out_policy.limiting_types[-1] = action
+                out_policy.limiting_types[-1] = [action[0], action[1]]
     v_basis = m.getAttr("VBasis", m.getVars())
     c_basis = m.getAttr("CBasis", m.getConstrs())
     return out_policy, gain.X, v_basis, c_basis

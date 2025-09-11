@@ -27,13 +27,18 @@ class ExperimentRun:
         self.ucrl_observer = observer.Observer(self.model)
         self.ucrl_simulator = simulator.Simulator(self.model, self.ucrl_agent, self.ucrl_observer, self.rng)
 
-    def run(self):
+    def run(self, verbose=False):
         for i in range(self.max_step_count):
             self.acrl_simulator.step()
             self.ablation_simulator.step()
             self.ucrl_simulator.step()
 
-    def summarize(self):
+            if i > 0 and i % 1000 == 0 and verbose:
+                print("Trailing gain (learning): ", self.acrl_observer.get_past_n_gain(10000))
+                print("Ideal gain: ", self.ideal_agent.get_estimated_gain())
+                print("Optimistic gain (learning): ", self.agent.get_estimated_gain())
+
+    def summarize(self, ideal_gain):
         ideal_gain = self.ideal_agent.get_estimated_gain()
         timestep = 10000
         return {
@@ -65,6 +70,8 @@ class Experiment:
                     continue
                 with open(f"exp_out/bound_{lstate}_{rstate}_states/run_{run}", "wb") as f:
                     pickle.dump(exp_run.summarize(), f)
+                if i == 9:
+                    raise Exception("stop")
 
 if __name__ == "__main__":
     # schedule: 
@@ -72,7 +79,7 @@ if __name__ == "__main__":
     # seed 2000: 6 types, 21 states
     # seed 3000: 6 types, 51 states
     # seed 4000: 6 types, 101 states
-    rng = np.random.default_rng(seed=3000)
+    rng = np.random.default_rng(seed=1000)
     bounds = [
             model.ModelBounds([3,3],[5,5]),
             #model.ModelBounds([3,3],[10,10]),
