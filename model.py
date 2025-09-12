@@ -312,9 +312,9 @@ class ModelBounds:
     def __init__(self, n_classes, capacities):
         #input("bounds changed to flat ones")
         self.rate_lb = 1
-        self.customer_ub = 10.0
-        self.server_ub = 10.0
-        self.abandonment_ub = 2
+        self.customer_ub = 5
+        self.server_ub = 5
+        self.abandonment_ub = 1.5
 
         self.n_classes = n_classes
         self.capacities = capacities

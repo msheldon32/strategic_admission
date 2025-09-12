@@ -19,6 +19,7 @@ def analyze(folder, n_runs):
             run_data["ablation"]["regret"] = run_data["ablation"]["regret"]
         print(f"total reward: {run_data['acrl']['reward'][-1]}")
         print(f"total time: {run_data['acrl']['time'][-1]}")
+        print(f"avg gain: {run_data['acrl']['reward'][-1]/run_data['acrl']['time'][-1]}")
         print(f"ideal gain: {run_data['acrl']['ideal_gain']}")
         def normalize(l):
             return [x/run_data["acrl"]["ideal_gain"] for x in l]

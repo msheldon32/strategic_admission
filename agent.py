@@ -43,16 +43,16 @@ class KnownPOAgent(Agent):
         self.policy = policy.Policy.full_acceptance_policy(model)
         #self.policy, self.gain, _, _ = lp.get_optimal_policy(self.model)
         found_policy = False
-        for i in range(200):
-            new_policy = self.policy.get_improved_policy()
-            if self.policy == new_policy:
-                found_policy = True
-                break
-            self.policy = new_policy
+        #for i in range(200):
+        #    new_policy = self.policy.get_improved_policy()
+        #    if self.policy == new_policy:
+        #        found_policy = True
+        #        break
+        #    self.policy = new_policy
         if not found_policy:
             print("falling back to linear programming")
             print(f"old gain: {self.model.get_gain_bias(self.policy)[1]}")
-            self.policy, self.gain, _, _ = lp.get_optimal_policy(self.model)
+            self.policy, self.gain, _, _= lp.get_optimal_policy(self.model)
             self.gain = float(self.gain)
             print(f"new gain: {self.gain}")
         else:
@@ -77,7 +77,7 @@ class ACRLAgent(Agent):
         self.exploration = ac.Exploration(model_bounds)
 
 
-        self.initial_confidence_param = 0.999
+        self.initial_confidence_param = 10
         self.model, failed = ac.generate_extended_model(model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param)
         self.policy = policy.Policy.full_acceptance_policy(self.model)
         self.n_policies = 1
@@ -91,16 +91,16 @@ class ACRLAgent(Agent):
     def update_policy(self):
         #self.policy, self.gain, self.v_basis, self.c_basis = lp.get_optimal_policy(self.model, self.v_basis, self.c_basis)
         found_policy = False
-        for i in range(200):
-            new_policy = self.policy.get_improved_policy()
-            if self.policy == new_policy:
-                found_policy = True
-                break
-            self.policy = new_policy
+        #for i in range(200):
+        #    new_policy = self.policy.get_improved_policy()
+        #    if self.policy == new_policy:
+        #        found_policy = True
+        #        break
+        #    self.policy = new_policy
         if not found_policy:
             print("falling back to linear programming")
             print(f"old gain: {self.model.get_gain_bias(self.policy)[1]}")
-            self.policy, self.gain, _, _ = lp.get_optimal_policy(self.model)
+            self.policy, self.gain, self.v_basis, self.c_basis = lp.get_optimal_policy(self.model, self.v_basis, self.c_basis)
             self.gain = float(self.gain)
             print(f"new gain: {self.gain}")
         else:
@@ -142,7 +142,7 @@ class AblationACRLAgent(Agent):
         self.exploration = ac.Exploration(model_bounds)
 
 
-        self.initial_confidence_param = 0.999
+        self.initial_confidence_param = 10
         self.model, failed = ac_ablation.generate_extended_model_ablation(model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param)
         self.policy = policy.Policy.full_acceptance_policy(self.model)
         self.n_policies = 1
@@ -155,16 +155,16 @@ class AblationACRLAgent(Agent):
     def update_policy(self):
         #self.policy, self.gain, self.v_basis, self.c_basis = lp.get_optimal_policy(self.model, self.v_basis, self.c_basis)
         found_policy = False
-        for i in range(200):
-            new_policy = self.policy.get_improved_policy()
-            if self.policy == new_policy:
-                found_policy = True
-                break
-            self.policy = new_policy
+        #for i in range(200):
+        #    new_policy = self.policy.get_improved_policy()
+        #    if self.policy == new_policy:
+        #        found_policy = True
+        #        break
+        #    self.policy = new_policy
         if not found_policy:
             print("falling back to linear programming")
             print(f"old gain: {self.model.get_gain_bias(self.policy)[1]}")
-            self.policy, self.gain, _, _ = lp.get_optimal_policy(self.model)
+            self.policy, self.gain, self.v_basis, self.c_basis = lp.get_optimal_policy(self.model, self.v_basis, self.c_basis)
             self.gain = float(self.gain)
             print(f"new gain: {self.gain}")
         else:

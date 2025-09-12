@@ -56,7 +56,7 @@ class Simulator:
 
 if __name__ == "__main__":
     rng = np.random.default_rng()
-    model_bounds = ModelBounds([3,3],[2,2])
+    model_bounds = ModelBounds([3,3],[25,25])
     #model_bounds.customer_ub = 4
     #model_bounds.server_ub = 4
     #model_bounds.abandonment_ub = 4
@@ -101,16 +101,16 @@ if __name__ == "__main__":
             #print(agent.model)
             #print(agent.parameter_estimator.transition_counts)
         if i % 100000 == 0 and i != 0:
-            #print(f"True model:")
-            #print(model)
-            #print(f"Optimistic model:")
-            #print(agent.model)
+            print(f"True model:")
+            print(model)
+            print(f"Optimistic model:")
+            print(agent.model)
             #confidence_param = agent.get_confidence_param()
             #agent.parameter_estimator.print_with_confidence(confidence_param)
             #raise Exception("stop")
             #ucrl_agent.print()
             observer.plot_regret(ideal_agent.get_estimated_gain(), "b")
-            ucrl_observer.plot_regret(ideal_agent.get_estimated_gain(), "g")
+            #ucrl_observer.plot_regret(ideal_agent.get_estimated_gain(), "g")
             ablation_observer.plot_regret(ideal_agent.get_estimated_gain(), "r")
             plt.show()
             #observer.plot_total_reward(ideal_agent.get_estimated_gain())

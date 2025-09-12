@@ -36,6 +36,7 @@ class ExperimentRun:
             if i > 0 and i % 1000 == 0 and verbose:
                 print("Trailing gain (learning): ", self.acrl_observer.get_past_n_gain(10000))
                 print("Ideal gain: ", self.ideal_agent.get_estimated_gain())
+                print("Trailing gain (ablation): ", self.ablation_observer.get_past_n_gain(10000))
                 print("Optimistic gain (learning): ", self.agent.get_estimated_gain())
 
     def summarize(self):
@@ -64,14 +65,14 @@ class Experiment:
             for run in range(self.runs_per_bound):
                 exp_run = ExperimentRun(bound, self.rng, self.max_step_count)
                 try:
-                    exp_run.run()
+                    exp_run.run(verbose=True)
                 except Exception as e:
                     self.failed_runs.append([run, str(e)])
                     continue
-                with open(f"exp_out/bound_{lstate}_{rstate}_states/run_{run}", "wb") as f:
-                    pickle.dump(exp_run.summarize(), f)
-                if i == 9:
-                    raise Exception("stop")
+                #with open(f"exp_out/bound_{lstate}_{rstate}_states/run_{run}", "wb") as f:
+                #    pickle.dump(exp_run.summarize(), f)
+                #if i == 9:
+                #    raise Exception("stop")
 
 if __name__ == "__main__":
     # schedule: 
@@ -87,6 +88,6 @@ if __name__ == "__main__":
             #model.ModelBounds([3,3],[50,50]),
             ]
 
-    experiment = Experiment(bounds, 50, rng, 2000000)
+    experiment = Experiment(bounds, 50, rng, 10000000)
 
     experiment.run()

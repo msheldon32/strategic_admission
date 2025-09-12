@@ -52,6 +52,36 @@ class ParameterEstimator:
 
         return [lbound, rbound]
 
+    def sojourn_time_estimate_cme(self, state, confidence_param, is_positive):
+        acc = 0
+        min_rate = self.model_bounds.rate_lb
+
+        ct = self.get_count(state, is_positive)
+        if ct == 0:
+            return min_rate
+
+        times = self.positive_sojourn_times[state] if is_positive else self.negative_sojourn_times[state]
+
+        eff_icb = (2*self.model_bounds.n_states/confidence_param)
+
+        coef = math.sqrt(2*math.log(eff_icb))
+        raise Exception("unfinished")
+
+        def influence_fn(x):
+            pass
+
+    def sojourn_time_epsilon_cme(self, state, confidence_param, is_positive):
+        ct = self.get_count(state, is_positive)
+        if ct == 0:
+            return float("inf")
+
+        inner_term = (1/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
+
+        min_rate = self.model_bounds.rate_lb
+
+        return (2/min_rate)*math.sqrt(inner_term)
+
+
     def sojourn_time_estimate(self, state, confidence_param, is_positive):
         acc = 0
         min_rate = self.model_bounds.rate_lb
@@ -66,14 +96,14 @@ class ParameterEstimator:
             truncation = math.sqrt(2*(i+1)/(math.pow(min_rate,2)*math.log(2*self.model_bounds.n_states/confidence_param)))
             if stime <= truncation:
                 acc += stime
-        return acc/len(self.sojourn_times[state])
+        return acc/ct
 
     def sojourn_time_epsilon(self, state, confidence_param, is_positive):
         ct = self.get_count(state, is_positive)
         if ct == 0:
             return float("inf")
 
-        inner_term = (4/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
+        inner_term = (2/max(1, ct))*math.log(2*self.model_bounds.n_states/confidence_param)
 
         min_rate = self.model_bounds.rate_lb
 
