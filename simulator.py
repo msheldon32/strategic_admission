@@ -8,6 +8,7 @@ from agent import KnownPOAgent, DeterministicAgent, ACRLAgent, UCRLAgent, Ablati
 from model import generate_model, ModelBounds, RewardGenerator
 from observer import Observer
 from policy import Policy
+import ac
 
 class Simulator:
     def __init__(self, model, agent, observer, rng: np.random._generator.Generator):
@@ -105,8 +106,11 @@ if __name__ == "__main__":
             print(model)
             print(f"Optimistic model:")
             print(agent.model)
-            #confidence_param = agent.get_confidence_param()
-            #agent.parameter_estimator.print_with_confidence(confidence_param)
+            confidence_param = agent.get_confidence_param()
+            agent.parameter_estimator.print_with_confidence(confidence_param)
+            print("---------------")
+            print("Brand new model: ")
+            print(ac.generate_extended_model(model_bounds, agent.parameter_estimator, model.state_rewards, confidence_param)[0])
             #raise Exception("stop")
             #ucrl_agent.print()
             observer.plot_regret(ideal_agent.get_estimated_gain(), "b")

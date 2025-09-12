@@ -27,9 +27,17 @@ class Model:
 
         self.transition_labels = [i for i in range(-self.n_server_types, self.n_customer_types+1)]
         self.transition_rates = [self.server_rates[state][::-1] + [self.abandonment_rates[state]] + self.customer_rates[state] for state in range(0, self.n_states)]
+    def is_valid(self):
+        for state, rates in enumerate(self.customer_rates):
+            if any([x <= -0.01 for x in rates]):
+                return False
+        for state, rates in enumerate(self.server_rates):
+            if any([x <= -0.01 for x in rates]):
+                return False
+        return True
 
     def __str__(self):
-        return f"Aggregate customer rates: {self.aggregate_customer_rates}\naggregate server rates: {self.aggregate_server_rates}\nabandonment_rates: {self.abandonment_rates}\ncustomer rates: {self.customer_rates}\nserver rates: {self.server_rates}\nrewards: {self.state_rewards}"
+        return f"Aggregate customer rates: {self.aggregate_customer_rates}\naggregate server rates: {self.aggregate_server_rates}\nabandonment_rates: {self.abandonment_rates}\ncustomer rates: {self.customer_rates}\nserver rates: {self.server_rates}"
 
     def get_customer_rate(self, state):
         return self.aggregate_customer_rates[state]
@@ -312,9 +320,9 @@ class ModelBounds:
     def __init__(self, n_classes, capacities):
         #input("bounds changed to flat ones")
         self.rate_lb = 1
-        self.customer_ub = 5
-        self.server_ub = 5
-        self.abandonment_ub = 1.5
+        self.customer_ub = 10
+        self.server_ub = 10
+        self.abandonment_ub = 2
 
         self.n_classes = n_classes
         self.capacities = capacities

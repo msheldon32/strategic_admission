@@ -88,6 +88,6 @@ if __name__ == "__main__":
             #model.ModelBounds([3,3],[50,50]),
             ]
 
-    experiment = Experiment(bounds, 50, rng, 10000000)
+    experiment = Experiment(bounds, 50, rng, 5000000)
 
     experiment.run()

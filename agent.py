@@ -122,12 +122,11 @@ class ACRLAgent(Agent):
             self.exploration.new_episode()
             print(f"new episode. total episodes: {self.exploration.n_episodes}")
             model, failed = ac.generate_extended_model(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/self.exploration.steps_before_episode)
-            if not failed:
-                self.model = model
-                self.policy.model = self.model
-                self.update_policy()
-                #if self.exploration.n_episodes == 20:
-                #    raise Exception("stop")
+            self.model = model
+            self.policy.model = self.model
+            self.update_policy()
+            #if self.exploration.n_episodes == 20:
+            #    raise Exception("stop")
     
     def get_estimated_gain(self):
         return self.gain
@@ -185,12 +184,11 @@ class AblationACRLAgent(Agent):
         if self.exploration.observe(state):
             self.exploration.new_episode()
             model, failed = ac_ablation.generate_extended_model_ablation(self.model_bounds, self.parameter_estimator, self.state_rewards, self.initial_confidence_param/self.exploration.steps_before_episode)
-            if not failed:
-                self.model = model
-                self.policy.model = self.model
-                self.update_policy()
-                #if self.exploration.n_episodes == 20:
-                #    raise Exception("stop")
+            self.model = model
+            self.policy.model = self.model
+            self.update_policy()
+            #if self.exploration.n_episodes == 20:
+            #    raise Exception("stop")
     
     def get_estimated_gain(self):
         return self.gain
