@@ -69,8 +69,8 @@ class Experiment:
                 except Exception as e:
                     self.failed_runs.append([run, str(e)])
                     continue
-                #with open(f"exp_out/bound_{lstate}_{rstate}_states/run_{run}", "wb") as f:
-                #    pickle.dump(exp_run.summarize(), f)
+                with open(f"exp_out/bound_{lstate}_{rstate}_states/run_{run}", "wb") as f:
+                    pickle.dump(exp_run.summarize(), f)
                 #if i == 9:
                 #    raise Exception("stop")
 
